@@ -305,6 +305,19 @@ class DataAcquisition:
             lb.append(ss)
         return zz, l1, lb
 
+    def LogVolSynthesisOverAssets(self,Symbols):
+        Synthesis = {}
+        if self.source == "OxfordManInstitute":
+            for symbol in Symbols:
+                self.IndicesCharging()
+                Synthesis[symbol] = self.GetlogVol(symbol, 'bv', True, True, False)
+        if self.source == "Yahoo finance":
+            for symbol in Symbols:
+                self.IndicesCharging(symbol, first_date="1900-01-01", last_date="2034-01-01")
+                Synthesis[symbol] = self.ComputeLogVolEstimator()
+        return Synthesis
+
+
 
 
 

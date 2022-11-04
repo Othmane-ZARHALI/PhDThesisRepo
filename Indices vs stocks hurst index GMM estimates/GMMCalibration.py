@@ -277,7 +277,7 @@ class GMM:
         if (len(logvol_samples.shape) == 1):
             logvol_samples = np.array([logvol_samples])
 
-        moms_model_m = self.ModelMoments_m(H, lambda2, lsigma2, Delta=1, lagSig=lagSignal, qval=qval, flagLambda2=flagLambda2)
+        moms_model_m = self.ModelMoments_m(H, lambda2, lsigma2, Delta=1, LagSignal=lagSignal, qval=qval, flagLambda2=flagLambda2)
 
         ### We dont want to subtract theoretical error
         if not (flagErr):
@@ -493,20 +493,12 @@ class GMM:
         if (len(datastream_sample.shape) == 1):
             datastream_sample = np.array([datastream_sample])
 
-        ###
         if (GMM_Method == 2):
             qvals = 2
 
         ### Parameters init
-        # lsigma2 = -15
-
         if (H_Init < 0):
             H, lambda2 = self.HurstEstimator(datastream_sample, LagSignal[4:])
-            # print("ComputeParamsGMM H = ", H)
-            # print("ComputeParamsGMM lambda2 = ", lambda2)
-
-
-
         if (lambda2_Init > 0):
             lambda2 = lambda2_Init
         if (H_Init > 0):
@@ -525,7 +517,6 @@ class GMM:
 
         zs = -10
         lsigma2_gmm1 = zs
-
         #### Removing eventual low frequencies
         if (flagRemoveLowFreq):
             for i in range(datastream_sample.shape[0]):
@@ -535,10 +526,8 @@ class GMM:
 
         T_gmm1 = T0
         tol = 1e-15
-
         if (GMM_Method == 1):
             # params_init = np.array([H,lambda2,T0,lsigma2])
-
             params_init = np.array([zz, zl, T0])
             if (flagLambda2):
                 bounds = ((None, None), (None, None), (-5, 10))
@@ -551,18 +540,14 @@ class GMM:
             gmm_args = (datastream_sample, LagSignal, lsigma2_gmm1, W_hat, flagLambda2)
             res = opt.minimize(self.criterion, params_init, args=(gmm_args), method=method, tol=tol, bounds=bounds)
 
-
             H_gmm1, lambda2_gmm1, T_gmm1 = res.x
 
         if (GMM_Method == 0):
-
             params_init = np.array([zz, zl, 0])
             if (flagLambda2):
-
                 bounds = ((None, None), (None, None), (-10, 20))
 
             else:
-
                 bounds = ((-30, -1e-2), (-5, 10), (-10, 20))
                 bounds = ((None, None), (-5, 10), (-10, 20))
 
@@ -571,7 +556,6 @@ class GMM:
             gmm_args = (datastream_sample, np.log(LL), LagSignal, W_hat, flagLambda2)
             res = opt.minimize(self.criterion_M, params_init, args=(gmm_args), method=method, tol=tol, bounds=bounds)
             # res = opt.minimize(criterion_M,params_init,args=(gmm_args),method=method,tol=tol)
-            #print("res = ", res)
             H_gmm1, lambda2_gmm1, T_gmm1 = res.x
 
         if (GMM_Method == 2):
@@ -597,8 +581,6 @@ class GMM:
 
             if (GMM_Method == 1):
                 err1 = self.ErrorVecSignal(datastream_sample, H_gmm1, lambda2_gmm1, T_gmm1, lsigma2_gmm1, LagSignal, flagLambda2)
-
-                # return err1
 
             if (GMM_Method == 2):
                 err1 = self.ErrorVecSignal_m(datastream_sample, H_gmm1, lambda2_gmm1, lsigma2_gmm1, LagSignal, qvals, flagLambda2)
@@ -653,10 +635,8 @@ class GMM:
                                 flagLambda2)
                 J *= len(datastream_sample[0])
 
-        print(res.fun)
-
+        print("Objective function value after calibration = ",res.fun)
         HH_gmm1 = 1 / (1 + np.exp(-H_gmm1))
-
         if (flagLambda2):
             l2_gmm1 = 1 / (1 + np.exp(-lambda2_gmm1))
         else:
@@ -677,18 +657,11 @@ class GMM:
             plt.figure()
 
             if (GMM_Method == 1):
-                ### Computing the empirical covariance of xvals
-                # ss,cc = my_corr(xvals[0]-xvals[0].mean(),xvals[0]-xvals[0].mean(),dMin=0,dMax=256)
-                # lagMax = max(lagSig)
-                # ss = np.linspace(0,lagMax)
-                # ss = ss.astype('int')
                 ss = LagSignal
                 ss1 = ss
                 if (ss[0] == 0):
                     ss1 = ss[1:]
-
-                err1 = self.ErrorVecSignal(datastream_sample, H_gmm1, lambda2_gmm1, T_gmm1, lsigma2_gmm1, ss, flagErr=False,
-                                  flagLambda2=flagLambda2)
+                err1 = self.ErrorVecSignal(datastream_sample, H_gmm1, lambda2_gmm1, T_gmm1, lsigma2_gmm1, ss, flagErr=False, flagLambda2=flagLambda2)
                 cc1 = err1.mean(axis=1)
                 ### Model Theoretical Covariance
                 mm = self.ModelMoments(H_gmm1, lambda2_gmm1, T_gmm1, lsigma2_gmm1, LagSignal=ss, flagLambda2=flagLambda2)
@@ -708,11 +681,6 @@ class GMM:
                 plt.plot(np.log(ss1), mm,label='Model moments GMM')
                 plt.legend()
             if (GMM_Method == 0):
-                ### Computing the empirical covariance of xvals
-                # ss,cc = my_corr(xvals[0]-xvals[0].mean(),xvals[0]-xvals[0].mean(),dMin=0,dMax=256)
-                # lagMax = max(lagSig)
-                # ss = np.linspace(0,lagMax)
-                # ss = ss.astype('int')
                 ss = LagSignal
                 ss1 = ss
                 if (ss[0] == 0):
@@ -766,3 +734,21 @@ class GMM:
             return HH_gmm1, l2_gmm1, np.exp(T_gmm1), ls2_gmm1, pvalue, J, J_95, [m_emp, m_th, ss_l]
         else:
             return HH_gmm1, l2_gmm1, np.exp(T_gmm1), ls2_gmm1, pvalue, J, J_95
+
+    def MultipleGMMCalibrations(self,datastream_samples, LagSignal=np.array([1, 2, 4, 5, 8, 11, 16, 22, 32, 45, 64, 90, 128]), niter=5,
+                         GMM_Method=1, qvals=None, flagPlot=False,
+                         flagRemoveLowFreq=False, flagLambda2=True, method='L-BFGS-B', H_Init=-1, lambda2_Init=-1):
+        Outputparameters = dict()
+        if (flagPlot):
+            Outputparameters_columns = ['Assets','H', 'lambda2', 'exp(T)', 'exp(lsigma2)', 'pvalue', 'J', 'J_95','external_parameters']
+        else:
+            Outputparameters_columns = ['Assets','H', 'lambda2', 'exp(T)', 'exp(lsigma2)', 'pvalue', 'J', 'J_95']
+        for column in Outputparameters_columns:
+            Outputparameters[column] = []
+        for asset,logvolcurve in datastream_samples.items():
+            Outputparameters['Assets'] += [asset]
+            calibrated_params = self.ComputeParamsGMM(logvolcurve, LagSignal, niter,GMM_Method, qvals, flagPlot,flagRemoveLowFreq, flagLambda2, method, H_Init, lambda2_Init)
+            for i in range(len(calibrated_params)):
+                Outputparameters[Outputparameters_columns[i+1]] += [calibrated_params[i]]
+        return pd.DataFrame.from_dict(Outputparameters)
+
