@@ -73,6 +73,7 @@ class GMM:
         else:
             KH2 = 1 / 2.0
         mm = LL * KH2 * (np.exp(T) - r1)
+        #print("mm bef <0 = ",mm)
         mm[mm < 0] = 0
         mm = mm + LS * dSig
         return mm
@@ -247,6 +248,7 @@ class GMM:
         ### We dont want to subtract theoretical error
         m1 = (xm[:, 0:xm_size] * xm[:, lagSignal[0]:lagSignal[0] + xm_size]).mean(axis=0) - moments_model[0]
         m2 = (xm[:, 0:xm_size] * xm[:, lagSignal[1]:lagSignal[1] + xm_size]).mean(axis=0) - moments_model[1]
+
         mm = np.vstack((m1, m2))
         for i in range(2, len(lagSignal)):
             m3 = (xm[:, 0:xm_size] * xm[:, lagSignal[i]:lagSignal[i] + xm_size]).mean(axis=0) - moments_model[i]
@@ -383,12 +385,10 @@ class GMM:
         '''
         H, lambda2, T = params
         samples, lagSig, lsigma2, W, flagLambda2 = args
-
         err = self.ErrorVecSignal(samples, H, lambda2, T, lsigma2, lagSig, flagLambda2=flagLambda2)
         err = err.mean(axis=1)
-
         crit_val = np.dot(np.dot(err.T, W), err)
-
+        crit_val = (np.abs(crit_val))
         return crit_val
 
     def criterion_M(self,params, *args):
@@ -450,7 +450,7 @@ class GMM:
 
         return crit_val
 
-    def ComputeParamsGMM(self,datastream_sample, LagSignal=np.array([1, 2, 4, 5, 8, 11, 16, 22, 32, 45, 64, 90, 128]), niter=5,
+    def ComputeParamsGMM(self,datastream_sample, niter=5, LagSignal=np.array([1, 2, 4, 5, 8, 11, 16, 22, 32, 45, 64, 90, 128]),
                          GMM_Method=1, qvals=None, flagPlot=True,
                          flagRemoveLowFreq=False, flagLambda2=True, method='L-BFGS-B', H_Init=-1, lambda2_Init=-1):
 
@@ -525,7 +525,7 @@ class GMM:
                 datastream_sample[i] = datastream_sample[i] - cc[0] * xx * xx - cc[1] * xx - cc[2]
 
         T_gmm1 = T0
-        tol = 1e-15
+        tol = 1e-20 #1e-15
         if (GMM_Method == 1):
             # params_init = np.array([H,lambda2,T0,lsigma2])
             params_init = np.array([zz, zl, T0])
@@ -536,11 +536,13 @@ class GMM:
                 bounds = ((None, None), (-5, 10), (-10, 8))
 
             W_hat = np.eye(len(LagSignal))
-
             gmm_args = (datastream_sample, LagSignal, lsigma2_gmm1, W_hat, flagLambda2)
             res = opt.minimize(self.criterion, params_init, args=(gmm_args), method=method, tol=tol, bounds=bounds)
-
             H_gmm1, lambda2_gmm1, T_gmm1 = res.x
+            print('*******************************')
+            print("H_gmm1, lambda2_gmm1, T_gmm1 = ",H_gmm1, lambda2_gmm1, T_gmm1)
+            print("res = ",res)
+            print('*******************************')
 
         if (GMM_Method == 0):
             params_init = np.array([zz, zl, 0])
@@ -620,7 +622,6 @@ class GMM:
 
                 H_gmm1, lambda2_gmm1, T_gmm1 = res.x
 
-
                 # J = criterion(np.array([H_gmm1,lambda2_gmm1,lsigma2_gmm1]),xvals,T_gmm1,lagSig,W_hat,flagLambda2)
                 J = self.criterion(np.array([H_gmm1, lambda2_gmm1, T_gmm1]), datastream_sample, LagSignal, lsigma2_gmm1, W_hat, flagLambda2)
                 J *= len(datastream_sample[0])
@@ -665,6 +666,7 @@ class GMM:
                 cc1 = err1.mean(axis=1)
                 ### Model Theoretical Covariance
                 mm = self.ModelMoments(H_gmm1, lambda2_gmm1, T_gmm1, lsigma2_gmm1, LagSignal=ss, flagLambda2=flagLambda2)
+
                 plt.plot(ss, cc1, 'o-',color = 'red',label='Empirical mean error GMM')
                 plt.plot(ss, mm,label='Model moments GMM')
                 plt.legend()

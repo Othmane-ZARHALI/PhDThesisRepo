@@ -317,6 +317,15 @@ class DataAcquisition:
                 Synthesis[symbol] = self.ComputeLogVolEstimator()
         return Synthesis
 
+    def LogVolSyntheticIndexFromData(self,Symbols,weights):
+        log_vol_synthesis = self.LogVolSynthesisOverAssets(Symbols)
+        vol_index = 0
+        cap_length = min([len(log_vol_synthesis[key]) for key in Symbols])
+        if self.source == "Yahoo finance":
+            for key,weight in zip(Symbols,weights):
+                vol_index += weight**2 * np.exp(log_vol_synthesis[key][:cap_length])
+            return np.log(vol_index)
+
 
 
 

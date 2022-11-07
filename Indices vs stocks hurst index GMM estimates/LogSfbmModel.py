@@ -57,7 +57,7 @@ class GaussianProcess:
 
 
 class Sfbm:
-    def __init__(self,H=0,lambdasquare=0.02,T=200,sigma=1):  #  T=200,
+    def __init__(self,H=0.01,lambdasquare=0.02,T=200,sigma=1):  #  T=200,
         self.H=H
         self.lambdasquareintermittency = lambdasquare
         self.T = T
@@ -114,8 +114,9 @@ class Sfbm:
         zz1.replace([np.inf, -np.inf], np.nan, inplace=True)
         zz1 = zz1.interpolate(limit_direction='both')
         zz1 = zz1 - zz1.mean()
+        zz2 = np.log(mm)
+        zz2 = zz2 - np.mean(np.log(mm))
 
-        zz2 = np.log(mm) - np.mean(np.log(mm))
         return zz1.values, zz2
 
 
@@ -142,15 +143,19 @@ class MultidimensionalSfbm:
         else:
             dimension = len(weights)
             index_mrw,index_mrm = 0,0
+
             if building_type=='mrw':
+                print('888888888888888888888888888')
                 for i in range(dimension):
                     index_mrw+=weights[i] * trajectories[i][0]
                 return index_mrw
             if building_type=='mrm':
+                print('888888888888888888888888888')
                 for i in range(dimension):
                     index_mrm += weights[i]**2*(trajectories[i][1])
                 return index_mrm
             if building_type=='mrm and mrw':
+                print('888888888888888888888888888')
                 for i in range(dimension):
                     index_mrm += weights[i]**2*(trajectories[i][1])
                     index_mrw += weights[i] * trajectories[i][0]
@@ -190,10 +195,10 @@ class MultipleIndicesConstructor:
             TypeError("MultipleIndicesConstructor error: weights is not of expected type, list")
         if type(multipleSfbm_models) != list:
             TypeError("MultipleIndicesConstructor error: multipleSfbm_models is not of expected type, list")
-        if any(type(Sfbm_models) != Sfbm for Sfbm_models in multipleSfbm_models):
-            TypeError("MultipleIndicesConstructor error: Sfbm_models is not of expected type, Sfbm")
-        if any(len(weights)!=len(Sfbm_models) for weights,Sfbm_models in zip(self.multiple_weights,self.multipleSfbm_models)):
-            ValueError("MultipleIndicesConstructor error: Sfbm_models and weights should be of the same length")
+        # if any(type(Sfbm_models) != Sfbm for Sfbm_models in multipleSfbm_models):
+        #     TypeError("MultipleIndicesConstructor error: Sfbm_models is not of expected type, Sfbm")
+        # if any(len(weights)!=len(Sfbm_models) for weights,Sfbm_models in zip(self.multiple_weights,self.multipleSfbm_models)):
+        #     ValueError("MultipleIndicesConstructor error: Sfbm_models and weights should be of the same length")
         else:
             self.multiple_weights = multiple_weights
             self.multipleSfbm_models = multipleSfbm_models
@@ -202,11 +207,15 @@ class MultipleIndicesConstructor:
         indices_trajectories = []
         for weights,Sfbm_models in zip(self.multiple_weights,self.multipleSfbm_models):
             index = MultidimensionalSfbm(Sfbm_models)
-            indices_trajectories.append(index.Index_Builder(weights,index.GenerateMultidimensionalSfbm(size,subsample), 'mrw and mrm'))
+            multidimensional_trajectories = index.GenerateMultidimensionalSfbm(size,subsample)
+            index_mrw, index_mrm = index.Index_Builder(weights,multidimensional_trajectories, 'mrw and mrm')
+            print("index_mrw, index_mrm = ",index_mrw, index_mrm)
+            indices_trajectories.append(index_mrw, index_mrm)
         return indices_trajectories
 
     def ConstructLogVolIndicestrajectories(self,size,subsample=4,method='quadratic variation estimate'):
         log_vol_indices_trajectories,indices_trajectories = [],self.ConstructIndicestrajectories(size,subsample)
+        print("indices_trajectories = ",indices_trajectories)
         if method=='quadratic variation estimate':
             for index_trajectory in indices_trajectories:
                 dvv = np.diff(index_trajectory[0])
