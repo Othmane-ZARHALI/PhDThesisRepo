@@ -43,8 +43,8 @@ realized_vol_data_obj_yf.IndicesCharging("GOOGL",first_date="1900-01-01",last_da
 log_vol_estimator = realized_vol_data_obj_yf.ComputeLogVolEstimator()
 # CompleteData_withlogvol = realized_vol_data_obj_yf.GetCompleteData_withlogvol(symlist_SP)
 # correlation_matrix_test = realized_vol_data_obj_yf.ComputeCovarianceMatrixLogvol(symlist_SP)[0]
-
-logvol_synthesis_yf = realized_vol_data_obj_yf.LogVolSynthesisOverAssets(["GOOGL","AAPL","AMZN"])
+#
+# logvol_synthesis_yf = realized_vol_data_obj_yf.LogVolSynthesisOverAssets(["GOOGL","AAPL","AMZN"])
 
 
 
@@ -75,8 +75,18 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 #print(calibrated_parameters)
 
 #calibrated_parameters_multipleassets_yf = GMM_obj.MultipleGMMCalibrations(logvol_synthesis_yf)
-calibrated_parameters_multipleassets_ox = GMM_obj.MultipleGMMCalibrations(logvol_synthesis_ox)
+#calibrated_parameters_multipleassets_ox = GMM_obj.MultipleGMMCalibrations(logvol_synthesis_ox)
 
-print("calibrated_parameters_multipleassets = ",calibrated_parameters_multipleassets_ox)
+#print("calibrated_parameters_multipleassets = ",calibrated_parameters_multipleassets_ox)
 
+#    MULTIDIMENSIONAL S FBM MODEL ######################################################################################
+# Independent case
+MultidimS_fbm_model = MultidimensionalSfbm([Sfbm(H=0.03),Sfbm(H=0.03)])
+S_fbm_model_mutlidimensionalgeneration_example = MultidimS_fbm_model.GenerateMultidimensionalSfbm(4000)
+#print(S_fbm_model_mutlidimensionalgeneration_example)
+index_builder = MultidimS_fbm_model.Index_Builder([0.5,0.5],S_fbm_model_mutlidimensionalgeneration_example,'mrm and mrw')
+log_vol_index_generation_direct = MultidimS_fbm_model.GeneratelogVolMultidimSfbm_Index([0.5,0.5],'direct',4000)
 
+GMM_index = GMM()
+index_estimatedGMM_param = GMM_index.ComputeParamsGMM(log_vol_index_generation_direct)
+print("index_estimatedGMM_param = ",index_estimatedGMM_param)

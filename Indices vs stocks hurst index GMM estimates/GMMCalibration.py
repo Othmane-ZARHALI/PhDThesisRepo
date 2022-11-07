@@ -752,3 +752,18 @@ class GMM:
                 Outputparameters[Outputparameters_columns[i+1]] += [calibrated_params[i]]
         return pd.DataFrame.from_dict(Outputparameters)
 
+    def HurstIndexEvolution_GMMCalibration(self,xdesignation_name,datastream_samples,type_plot = 'curve', LagSignal=np.array([1, 2, 4, 5, 8, 11, 16, 22, 32, 45, 64, 90, 128]), niter=5,
+                         GMM_Method=1, qvals=None, flagPlot=False,
+                         flagRemoveLowFreq=False, flagLambda2=True, method='L-BFGS-B', H_Init=-1, lambda2_Init=-1):
+        Calibrated_Hurst_indices = self.MultipleGMMCalibrations(datastream_samples, LagSignal, niter,
+                         GMM_Method, qvals, flagPlot,
+                         flagRemoveLowFreq, flagLambda2, method, H_Init, lambda2_Init)['H']
+        xdesignation = datastream_samples[xdesignation_name]
+        if type_plot == 'curve':
+            plt.plot(xdesignation,Calibrated_Hurst_indices, 'o',label='Hurst index')
+        if type_plot == 'histogram':
+            plt.hist(Calibrated_Hurst_indices, density=True, bins=10)
+        plt.legend()
+        plt.title("Hurst index evolution wrt {}",xdesignation_name)
+        plt.show()
+
