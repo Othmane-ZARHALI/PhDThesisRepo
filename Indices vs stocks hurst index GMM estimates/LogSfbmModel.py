@@ -142,20 +142,18 @@ class MultidimensionalSfbm:
             ValueError("Sfbm error: weights and trajectories should be of the same length")
         else:
             dimension = len(weights)
-            index_mrw,index_mrm = 0,0
-
-            if building_type=='mrw':
-                print('888888888888888888888888888')
+            size = len(trajectories[0][0])
+            index_mrw, index_mrm = 0,0
+            #index_mrw,index_mrm = np.array([0 for i in range(size)]), np.array([0 for i in range(size)])
+            if building_type =='mrw':
                 for i in range(dimension):
                     index_mrw+=weights[i] * trajectories[i][0]
                 return index_mrw
-            if building_type=='mrm':
-                print('888888888888888888888888888')
+            if building_type =='mrm':
                 for i in range(dimension):
                     index_mrm += weights[i]**2*(trajectories[i][1])
                 return index_mrm
-            if building_type=='mrm and mrw':
-                print('888888888888888888888888888')
+            if building_type =='mrm and mrw':
                 for i in range(dimension):
                     index_mrm += weights[i]**2*(trajectories[i][1])
                     index_mrw += weights[i] * trajectories[i][0]
@@ -195,43 +193,60 @@ class MultipleIndicesConstructor:
             TypeError("MultipleIndicesConstructor error: weights is not of expected type, list")
         if type(multipleSfbm_models) != list:
             TypeError("MultipleIndicesConstructor error: multipleSfbm_models is not of expected type, list")
-        # if any(type(Sfbm_models) != Sfbm for Sfbm_models in multipleSfbm_models):
-        #     TypeError("MultipleIndicesConstructor error: Sfbm_models is not of expected type, Sfbm")
-        # if any(len(weights)!=len(Sfbm_models) for weights,Sfbm_models in zip(self.multiple_weights,self.multipleSfbm_models)):
-        #     ValueError("MultipleIndicesConstructor error: Sfbm_models and weights should be of the same length")
+        if any(type(Sfbm_models) != Sfbm for Sfbm_models in multipleSfbm_models):
+            TypeError("MultipleIndicesConstructor error: Sfbm_models is not of expected type, Sfbm")
+        if any(len(weights)!=len(Sfbm_models) for weights,Sfbm_models in zip(multiple_weights,multipleSfbm_models)):
+            ValueError("MultipleIndicesConstructor error: Sfbm_models and weights should be of the same length")
         else:
             self.multiple_weights = multiple_weights
             self.multipleSfbm_models = multipleSfbm_models
 
     def ConstructIndicestrajectories(self,size,subsample=4):
-        indices_trajectories = []
-        for weights,Sfbm_models in zip(self.multiple_weights,self.multipleSfbm_models):
-            index = MultidimensionalSfbm(Sfbm_models)
-            multidimensional_trajectories = index.GenerateMultidimensionalSfbm(size,subsample)
-            index_mrw, index_mrm = index.Index_Builder(weights,multidimensional_trajectories, 'mrw and mrm')
-            print("index_mrw, index_mrm = ",index_mrw, index_mrm)
-            indices_trajectories.append(index_mrw, index_mrm)
-        return indices_trajectories
+        Indicestrajectories = []
+        for weights, Sfbm_models in zip(self.multiple_weights, self.multipleSfbm_models):
+            Index = MultidimensionalSfbm(Sfbm_models)
+            Sfbms_generation_example = Index.GenerateMultidimensionalSfbm(size, subsample)
+            indices_trajectories = Index.Index_Builder(weights, Sfbms_generation_example, 'mrm and mrw')
+            Indicestrajectories.append([indices_trajectories])
+        return Indicestrajectories
 
-    def ConstructLogVolIndicestrajectories(self,size,subsample=4,method='quadratic variation estimate'):
+
+    def ConstructLogVolIndicestrajectories(self,size,subsample=4,method='quadratic variation estimate',keys = []):
         log_vol_indices_trajectories,indices_trajectories = [],self.ConstructIndicestrajectories(size,subsample)
-        print("indices_trajectories = ",indices_trajectories)
+        if keys != []:
+            if len(indices_trajectories)!=len(keys):
+                ValueError("MultipleIndicesConstructor error: keys and indices_trajectories should be of the same length")
+        Multiple_indices_dic = dict()
         if method=='quadratic variation estimate':
-            for index_trajectory in indices_trajectories:
-                dvv = np.diff(index_trajectory[0])
+            #for index_trajectory in indices_trajectories:
+            for i in range(len(indices_trajectories)):
+                dvv = np.diff(indices_trajectories[i][0])
                 dvv = np.append(dvv[0], dvv)
                 quadratic_variation = np.cumsum(dvv * dvv)
                 logvol_index = np.log(quadratic_variation)
-                logvol_index = pd.Series(logvol_index)
-                logvol_index.replace([np.inf, -np.inf], np.nan, inplace=True)
-                logvol_index = logvol_index.interpolate(limit_direction='both')
+
+                # logvol_index = pd.Series(logvol_index)
+                # logvol_index.replace([np.inf, -np.inf], np.nan, inplace=True)
+                # logvol_index = logvol_index.interpolate(limit_direction='both')
+
                 logvol_index = logvol_index - logvol_index.mean()
                 log_vol_indices_trajectories.append(logvol_index)
+                #print("logvol_index = ",(logvol_index))
+                #print("indices_trajectories.index(index_trajectory) = ",indices_trajectories.index(index_trajectory))
+                Multiple_indices_dic[keys[i]+" "+str(i)] = logvol_index
         if method == 'direct':
-            for index_trajectory in indices_trajectories:
-                logvol_index = pd.Series(np.log(index_trajectory[1]))
-                logvol_index.replace([np.inf, -np.inf], np.nan, inplace=True)
-                logvol_index = logvol_index.interpolate(limit_direction='both')
+            #for index_trajectory in indices_trajectories:
+            for i in range(len(indices_trajectories)):
+                logvol_index = np.log(indices_trajectories[i][1])
+
+                # logvol_index = pd.Series(logvol_index)
+                # logvol_index.replace([np.inf, -np.inf], np.nan, inplace=True)
+                # logvol_index = logvol_index.interpolate(limit_direction='both')
+
                 logvol_index = logvol_index - logvol_index.mean()
                 log_vol_indices_trajectories.append(logvol_index)
-        return log_vol_indices_trajectories
+                Multiple_indices_dic[keys[i]] = list(logvol_index)
+        if keys!=[]:
+            return log_vol_indices_trajectories,Multiple_indices_dic
+        else:
+            return log_vol_indices_trajectories

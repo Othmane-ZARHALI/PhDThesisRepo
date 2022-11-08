@@ -128,17 +128,17 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 
 
 
-# dimension = 3
-# Hs = [0.25 for i in range(dimension)]
-# weights = np.random.randint(0, 10, dimension)
+dimension = 2
+Hs = [0.25 for i in range(dimension)]
+weights = np.random.randint(1, 10, dimension)
+
+weights = weights / np.sum(weights)
 #
-# weights = weights / np.sum(weights)
-#
-# Sfbms = [Sfbm(H=Hs[i]) for i in range(dimension)]
+Sfbms = [Sfbm(H=Hs[i]) for i in range(dimension)]
 # MultidimensionalSfbms = MultidimensionalSfbm(Sfbms)
 # Sfbms_generation_example = MultidimensionalSfbms.GenerateMultidimensionalSfbm(4000)
-# # print(S_fbm_model_mutlidimensionalgeneration_example)
 # index_builder_Sfbms = MultidimensionalSfbms.Index_Builder(weights, Sfbms_generation_example,'mrm and mrw')
+# print("index_builder_Sfbms = ",index_builder_Sfbms)
 # log_vol_index_generation_direct_Sfbms = MultidimensionalSfbms.GeneratelogVolMultidimSfbm_Index(weights,'quadratic variation estimate',4000)
 #
 # GMM_index = GMM()
@@ -146,20 +146,28 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 # print("index_estimatedGMM_paramSfbms = ", index_estimatedGMM_paramSfbms)
 
 # H distribution
-Number_indices = 2
-dimension = 3
+Number_indices = 15
+dimension = 2
 Hs = [0.25 for i in range(dimension)]
 Multiple_weights,Multiple_Sfbms = [],[]
 Multiple_indices = dict()
 for i in range(Number_indices):
-    weights = np.random.randint(0, 10, dimension)
+    weights = np.random.randint(1, 10, dimension)
     weights = weights / np.sum(weights)
     Multiple_weights.append(weights)
     Multiple_Sfbms.append([Sfbm(H=Hs[i]) for i in range(dimension)])
 
+
 MultipleIndicesConstructor_obj = MultipleIndicesConstructor(Multiple_weights,Multiple_Sfbms)
 trajectories_indices = MultipleIndicesConstructor_obj.ConstructIndicestrajectories(4000)
-print("trajectories_indices = ",trajectories_indices)
+#print("trajectories_indices = ",trajectories_indices)
 
+log_vol_indices_dic = MultipleIndicesConstructor_obj.ConstructLogVolIndicestrajectories(4000,4,'quadratic variation estimate',['Index trajectory' for i in range(Number_indices)])
+Index_trajectories_synthesis = log_vol_indices_dic[1]
+
+GMM_index_trajectories_obj = GMM()
+print(GMM_index_trajectories_obj.MultipleGMMCalibrations(Index_trajectories_synthesis))
+
+GMM_index_trajectories_obj.HurstIndexEvolution_GMMCalibration(Index_trajectories_synthesis,'curve')
 
 
