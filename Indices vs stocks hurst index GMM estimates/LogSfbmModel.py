@@ -57,7 +57,7 @@ class GaussianProcess:
 
 
 class Sfbm:
-    def __init__(self,H=0.01,lambdasquare=0.02,T=200,sigma=1):  #  T=200,
+    def __init__(self,H=0.01,lambdasquare=0.02,T=0.61,sigma=1):  #  T=200,
         self.H=H
         self.lambdasquareintermittency = lambdasquare
         self.T = T
@@ -106,6 +106,7 @@ class Sfbm:
         mm = np.cumsum(dmm)
         quadratic_variation = quadratic_variation[::M]
         mm = mm[::M]
+
         quadratic_variation = quadratic_variation[1:] - quadratic_variation[:-1]
 
         mm = mm[1:] - mm[:-1]
@@ -115,7 +116,7 @@ class Sfbm:
         zz1 = zz1.interpolate(limit_direction='both')
         zz1 = zz1 - zz1.mean()
         zz2 = np.log(mm)
-        zz2 = zz2 - np.mean(np.log(mm))
+        zz2 = zz2 - np.mean(zz2)
 
         return zz1.values, zz2
 
@@ -138,6 +139,10 @@ class MultidimensionalSfbm:
             return Generation_list
 
     def Index_Builder(self,weights,trajectories, building_type = 'mrw'):
+        import matplotlib.pyplot as plt
+        # plt.plot(trajectories[0][0])
+        # plt.title("Index_Builder - logprice")
+        # plt.show()
         if len(weights)!= len(trajectories):
             ValueError("Sfbm error: weights and trajectories should be of the same length")
         else:
@@ -147,7 +152,7 @@ class MultidimensionalSfbm:
             #index_mrw,index_mrm = np.array([0 for i in range(size)]), np.array([0 for i in range(size)])
             if building_type =='mrw':
                 for i in range(dimension):
-                    index_mrw+=weights[i] * trajectories[i][0]
+                    index_mrw+=weights[i] * np.exp(trajectories[i][0])
                 return index_mrw
             if building_type =='mrm':
                 for i in range(dimension):
@@ -156,22 +161,29 @@ class MultidimensionalSfbm:
             if building_type =='mrm and mrw':
                 for i in range(dimension):
                     index_mrm += weights[i]**2*(trajectories[i][1])
-                    index_mrw += weights[i] * trajectories[i][0]
-                return index_mrw,index_mrm
+                    index_mrw += weights[i] * np.exp(trajectories[i][0])
+                return np.log(index_mrw),index_mrm
 
-    def GeneratelogVolMultidimSfbm_Index(self,weights,method='quadratic variation estimate',size=4096, subsample=8):  #,sigma=1, M=32
+    def GeneratelogVolMultidimSfbm_Index(self,weights,method='quadratic variation estimate',size=4096, subsample=8,M=32):  #,sigma=1, M=32
         # factor = 1
         # if self.H > 0:
         #     factor = M ** (-2 * self.H) / 4
         # self.lambdasquareintermittency *=  factor
-        trajectories = self.GenerateMultidimensionalSfbm(size, subsample)
+        trajectories = self.GenerateMultidimensionalSfbm(size*M, subsample)
         mrw_multidim_index,mrm_multidim_index= self.Index_Builder(weights,trajectories,'mrm and mrw')
+
+        # import matplotlib.pyplot as plt
+        # plt.plot(mrw_multidim_index)
+        # plt.title("GeneratelogVolMultidimSfbm_Index")
+        # plt.show()
+
         # self.lambdasquareintermittency /= factor
         if method=='quadratic variation estimate':
             dvv = np.diff(np.array(mrw_multidim_index))
             dvv = np.append(dvv[0], dvv)
-
             quadratic_variation = np.cumsum(dvv * dvv)
+            quadratic_variation = quadratic_variation[::M]
+            quadratic_variation = quadratic_variation[1:] - quadratic_variation[:-1]
             logvol_index = np.log(quadratic_variation)
             logvol_index = pd.Series(logvol_index)
             logvol_index.replace([np.inf, -np.inf], np.nan, inplace=True)
@@ -179,6 +191,10 @@ class MultidimensionalSfbm:
             logvol_index = logvol_index - logvol_index.mean()
             return logvol_index.values
         if method=='direct':
+            dmm = np.diff(mrm_multidim_index)
+            dmm = np.append(dmm[0], dmm)
+            mrm_multidim_index = np.cumsum(dmm)
+            mrm_multidim_index = mrm_multidim_index[::M]
             logvol_index = pd.Series(np.log(mrm_multidim_index))
             logvol_index.replace([np.inf, -np.inf], np.nan, inplace=True)
             logvol_index = logvol_index.interpolate(limit_direction='both')

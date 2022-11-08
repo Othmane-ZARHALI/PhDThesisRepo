@@ -540,7 +540,6 @@ class GMM:
             res = opt.minimize(self.criterion, params_init, args=(gmm_args), method=method, tol=tol, bounds=bounds)
             H_gmm1, lambda2_gmm1, T_gmm1 = res.x
             print('*******************************')
-            print("H_gmm1, lambda2_gmm1, T_gmm1 = ",H_gmm1, lambda2_gmm1, T_gmm1)
             print("res = ",res)
             print('*******************************')
 
