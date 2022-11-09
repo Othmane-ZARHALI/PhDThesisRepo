@@ -753,12 +753,11 @@ class GMM:
                 Outputparameters[Outputparameters_columns[i+1]] += [calibrated_params[i]]
         return pd.DataFrame.from_dict(Outputparameters)
 
-    def HurstIndexEvolution_GMMCalibration(self,datastream_samples,type_plot = 'curve',xdesignation_name="", LagSignal=np.array([1, 2, 4, 5, 8, 11, 16, 22, 32, 45, 64, 90, 128]), niter=5,
+    def HurstIndexEvolution_GMMCalibration(self,datastream_samples,type_plot = 'curve',xdesignation_name="", niter=5, LagSignal=np.array([1, 2, 4, 5, 8, 11, 16, 22, 32, 45, 64, 90, 128]),
                          GMM_Method=1, qvals=None, flagPlot=False,
                          flagRemoveLowFreq=False, flagLambda2=True, method='L-BFGS-B', H_Init=-1, lambda2_Init=-1):
-        Calibrated_Hurst_indices = self.MultipleGMMCalibrations(datastream_samples, niter, LagSignal,
-                         GMM_Method, qvals, flagPlot,
-                         flagRemoveLowFreq, flagLambda2, method, H_Init, lambda2_Init)['H']
+        Calibrated_Hurst_indices = self.MultipleGMMCalibrations(datastream_samples, niter, LagSignal,GMM_Method, qvals, flagPlot,flagRemoveLowFreq, flagLambda2, method, H_Init, lambda2_Init)['H'].values
+        size_calibrated_hursts = len(Calibrated_Hurst_indices)
         if type_plot == 'curve':
             if xdesignation_name=="":
                 xdesignation = np.arange(0,len(Calibrated_Hurst_indices))
@@ -769,7 +768,7 @@ class GMM:
             plt.legend()
             plt.title(f"Hurst index evolution wrt {xdesignation_name}" )
         if type_plot == 'histogram':
-            plt.hist(Calibrated_Hurst_indices, density=True, bins=10)
+            plt.hist(Calibrated_Hurst_indices, density=True, bins=int(size_calibrated_hursts/2))
             plt.legend()
             plt.title("Hurst index Histogram")
         plt.show()

@@ -75,19 +75,20 @@ class Sfbm:
         m = -correlation_list[0]
         return m, correlation_list
 
-    def GenerateSfbm(self,size=4096, subsample=4):
+    def GenerateSfbm(self,size=4096, subsample=8):
         dt = 1 / subsample
         N = size - 1
         #N = size
         N = 2 ** np.ceil(np.log2(N))
         m, corr = self.SfbmCorrelation(size=N * subsample, dt=dt)
         log_mrm = GaussianProcess('LastWaveFFT',corr).Generate(size * subsample)
-        #print("log_mrm log_vol_index= ",log_mrm)
         om = log_mrm + m
         gg = np.random.normal(size=len(om))
         mrw = np.cumsum(np.exp(om) * gg * self.sigma * np.sqrt(dt))
         mrm = np.cumsum(self.sigma * self.sigma * np.exp(2 * om) * dt)
-        return mrw[::subsample], mrm[::subsample]
+        mrw,mrm = mrw[::subsample],mrm[::subsample]
+        mrw = np.log(np.exp(mrw))
+        return mrw,mrm
 
 
     def GeneratelogVol(self,size=4096, subsample=8, M=32):
@@ -131,7 +132,7 @@ class MultidimensionalSfbm:
             self.Sfbm_models = Sfbm_models
             self.correlation = correlation
 
-    def GenerateMultidimensionalSfbm(self,size=4096, subsample=4):
+    def GenerateMultidimensionalSfbm(self,size=4096, subsample=8):
         Generation_list = []
         if self.correlation==0:
             for Sfbm_model in self.Sfbm_models:
@@ -173,8 +174,8 @@ class MultidimensionalSfbm:
         mrw_multidim_index,mrm_multidim_index= self.Index_Builder(weights,trajectories,'mrm and mrw')
 
         # import matplotlib.pyplot as plt
-        # plt.plot(mrw_multidim_index)
-        # plt.title("GeneratelogVolMultidimSfbm_Index")
+        # plt.plot(mrm_multidim_index)
+        # plt.title("GeneratelogVolMultidimSfbm_Index - mrm_multidim_index")
         # plt.show()
 
         # self.lambdasquareintermittency /= factor
@@ -193,9 +194,11 @@ class MultidimensionalSfbm:
         if method=='direct':
             dmm = np.diff(mrm_multidim_index)
             dmm = np.append(dmm[0], dmm)
-            mrm_multidim_index = np.cumsum(dmm)
-            mrm_multidim_index = mrm_multidim_index[::M]
-            logvol_index = pd.Series(np.log(mrm_multidim_index))
+            mm  = np.cumsum(dmm)
+            mm  = mm [::M]
+            mm = mm[1:] - mm[:-1]
+            logvol_index = np.log(mm )
+            logvol_index = pd.Series(logvol_index)
             logvol_index.replace([np.inf, -np.inf], np.nan, inplace=True)
             logvol_index = logvol_index.interpolate(limit_direction='both')
             logvol_index = logvol_index - logvol_index.mean()
@@ -223,12 +226,12 @@ class MultipleIndicesConstructor:
             Index = MultidimensionalSfbm(Sfbm_models)
             Sfbms_generation_example = Index.GenerateMultidimensionalSfbm(size, subsample)
             indices_trajectories = Index.Index_Builder(weights, Sfbms_generation_example, 'mrm and mrw')
-            Indicestrajectories.append([indices_trajectories])
+            Indicestrajectories.append(indices_trajectories)
         return Indicestrajectories
 
 
-    def ConstructLogVolIndicestrajectories(self,size,subsample=4,method='quadratic variation estimate',keys = []):
-        log_vol_indices_trajectories,indices_trajectories = [],self.ConstructIndicestrajectories(size,subsample)
+    def ConstructLogVolIndicestrajectories(self,size,subsample=8,method='quadratic variation estimate',keys = [],M = 32):
+        log_vol_indices_trajectories,indices_trajectories = [],self.ConstructIndicestrajectories(size*M,subsample)
         if keys != []:
             if len(indices_trajectories)!=len(keys):
                 ValueError("MultipleIndicesConstructor error: keys and indices_trajectories should be of the same length")
@@ -239,29 +242,35 @@ class MultipleIndicesConstructor:
                 dvv = np.diff(indices_trajectories[i][0])
                 dvv = np.append(dvv[0], dvv)
                 quadratic_variation = np.cumsum(dvv * dvv)
+                quadratic_variation = quadratic_variation[::M]
+                quadratic_variation = quadratic_variation[1:] - quadratic_variation[:-1]
                 logvol_index = np.log(quadratic_variation)
 
-                # logvol_index = pd.Series(logvol_index)
-                # logvol_index.replace([np.inf, -np.inf], np.nan, inplace=True)
-                # logvol_index = logvol_index.interpolate(limit_direction='both')
+                logvol_index = pd.Series(logvol_index)
+                logvol_index.replace([np.inf, -np.inf], np.nan, inplace=True)
+                logvol_index = logvol_index.interpolate(limit_direction='both')
 
                 logvol_index = logvol_index - logvol_index.mean()
                 log_vol_indices_trajectories.append(logvol_index)
                 #print("logvol_index = ",(logvol_index))
                 #print("indices_trajectories.index(index_trajectory) = ",indices_trajectories.index(index_trajectory))
-                Multiple_indices_dic[keys[i]+" "+str(i)] = logvol_index
+                Multiple_indices_dic[keys[i]+" "+str(i)] = logvol_index.values
         if method == 'direct':
             #for index_trajectory in indices_trajectories:
             for i in range(len(indices_trajectories)):
-                logvol_index = np.log(indices_trajectories[i][1])
-
-                # logvol_index = pd.Series(logvol_index)
-                # logvol_index.replace([np.inf, -np.inf], np.nan, inplace=True)
-                # logvol_index = logvol_index.interpolate(limit_direction='both')
+                dmm = np.diff(indices_trajectories[i][1])
+                dmm = np.append(dmm[0], dmm)
+                mm = np.cumsum(dmm)
+                mm = mm[::M]
+                mm = mm[1:] - mm[:-1]
+                logvol_index = np.log(mm)
+                logvol_index = pd.Series(logvol_index)
+                logvol_index.replace([np.inf, -np.inf], np.nan, inplace=True)
+                logvol_index = logvol_index.interpolate(limit_direction='both')
 
                 logvol_index = logvol_index - logvol_index.mean()
                 log_vol_indices_trajectories.append(logvol_index)
-                Multiple_indices_dic[keys[i]] = list(logvol_index)
+                Multiple_indices_dic[keys[i]+" "+str(i)] = logvol_index.values
         if keys!=[]:
             return log_vol_indices_trajectories,Multiple_indices_dic
         else:
