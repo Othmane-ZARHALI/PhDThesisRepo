@@ -768,7 +768,9 @@ class GMM:
             plt.legend()
             plt.title(f"Hurst index evolution wrt {xdesignation_name}" )
         if type_plot == 'histogram':
-            plt.hist(Calibrated_Hurst_indices, density=True, bins=int(size_calibrated_hursts/2))
+            #plt.hist(Calibrated_Hurst_indices, density=True, bins=int(size_calibrated_hursts/2))l
+            #plt.hist(Calibrated_Hurst_indices, density=True, bins=5)
+            plt.hist(Calibrated_Hurst_indices)
             plt.legend()
             plt.title("Hurst index Histogram")
         plt.show()

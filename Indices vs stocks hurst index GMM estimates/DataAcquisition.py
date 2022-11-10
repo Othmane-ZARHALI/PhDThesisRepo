@@ -43,7 +43,7 @@ def NeweyWest_CovarianceMatrixEstimation(err1):
         m2 = min(L, L + i)
         for k in range(m1, m2):
             SJ += np.outer(err1[:, k], err1[:, k - i]) / L
-        WW += (1 - np.abs(i) / (J + 1)) * SJ
+        WW += (1 - np.abs(i) / ((J + 1))) * SJ
     return WW
 
 

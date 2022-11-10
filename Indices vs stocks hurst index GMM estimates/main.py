@@ -37,7 +37,7 @@ logvol_synthesis_ox = realized_vol_data_obj_ox.LogVolSynthesisOverAssets(['.AEX'
 
 realized_vol_data_obj_yf = DataAcquisition('Yahoo finance')
 
-realized_vol_data_obj_yf.IndicesCharging("GOOGL",first_date="1900-01-01",last_date="2034-01-01")
+realized_vol_data_obj_yf.IndicesCharging("AAPL",first_date="1900-01-01",last_date="2034-01-01")
 # market_data = realized_vol_data_obj_yf.dataframe_indices
 # market_capitalization = realized_vol_data_obj_yf.market_capitalization
 # signal_test = market_data["Close"]
@@ -125,7 +125,7 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 #
 #
 # S_fbm_model_logvolgeneration_example = S_fbm_model.GeneratelogVol(size)
-# S_fbm_model_logvolgeneration_example_qv = S_fbm_model_logvolgeneration_example[1]
+# S_fbm_model_logvolgeneration_example_qv = S_fbm_model_logvolgeneration_example[1]   # direct computation IV estimate
 #
 # plt.plot(S_fbm_model_logvolgeneration_example_qv)
 # plt.title( f'Sfbm model 1D - H={H} - log vol ')
@@ -140,26 +140,26 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 
 
 
-dimension = 5
-H = 0.1
-Hs = [H for i in range(dimension)]
-weights = np.random.randint(1, 10, dimension)
-
-weights = weights / np.sum(weights)
-
-Sfbms = [Sfbm(Hs[i],0.068970 ,2**14) for i in range(dimension)]  #lambda2 = 0.068970
-MultidimensionalSfbms = MultidimensionalSfbm(Sfbms)
-Sfbms_generation_example = MultidimensionalSfbms.GenerateMultidimensionalSfbm(4000)
-index_builder_Sfbms = MultidimensionalSfbms.Index_Builder(weights, Sfbms_generation_example,'mrm and mrw')
-log_vol_index_generation_direct_Sfbms = MultidimensionalSfbms.GeneratelogVolMultidimSfbm_Index(weights,'quadratic variation estimate',4000)
-
-plt.plot(log_vol_index_generation_direct_Sfbms)
-plt.title( f'Sfbm model 1D index - H={H} - log vol ')
-plt.show()
-
-GMM_index = GMM()
-index_estimatedGMM_paramSfbms = GMM_index.ComputeParamsGMM(log_vol_index_generation_direct_Sfbms,20)
-print("index_estimatedGMM_paramSfbms = ", index_estimatedGMM_paramSfbms)
+# dimension = 5
+# H = 0.15
+# Hs = [H for i in range(dimension)]
+# weights = np.random.randint(1, 10, dimension)
+#
+# weights = weights / np.sum(weights)
+#
+# Sfbms = [Sfbm(Hs[i],0.068970 ,2**14) for i in range(dimension)]  #lambda2 = 0.068970  T=2**14
+# MultidimensionalSfbms = MultidimensionalSfbm(Sfbms)
+# Sfbms_generation_example = MultidimensionalSfbms.GenerateMultidimensionalSfbm(4000)
+# index_builder_Sfbms = MultidimensionalSfbms.Index_Builder(weights, Sfbms_generation_example,'mrm and mrw')
+# log_vol_index_generation_direct_Sfbms = MultidimensionalSfbms.GeneratelogVolMultidimSfbm_Index(weights,'quadratic variation estimate',4000)
+#
+# plt.plot(log_vol_index_generation_direct_Sfbms)
+# plt.title( f'Sfbm model 1D index - H={H} - log vol ')
+# plt.show()
+#
+# GMM_index = GMM()
+# index_estimatedGMM_paramSfbms = GMM_index.ComputeParamsGMM(log_vol_index_generation_direct_Sfbms,10)
+# print("index_estimatedGMM_paramSfbms = ", index_estimatedGMM_paramSfbms)
 
 
 
@@ -169,8 +169,8 @@ print("index_estimatedGMM_paramSfbms = ", index_estimatedGMM_paramSfbms)
 
 # H distribution
 # Number_indices = 50
-# dimension = 1
-# H = 0.05
+# dimension = 10
+# H = 0.15
 # Hs = [H for i in range(dimension)]
 # Multiple_weights,Multiple_Sfbms = [],[]
 # Multiple_indices = dict()
@@ -195,6 +195,35 @@ print("index_estimatedGMM_paramSfbms = ", index_estimatedGMM_paramSfbms)
 #
 # GMM_index_trajectories_obj = GMM()
 #
-# GMM_index_trajectories_obj.HurstIndexEvolution_GMMCalibration(Index_trajectories_synthesis,'histogram',"",50)
+# GMM_index_trajectories_obj.HurstIndexEvolution_GMMCalibration(Index_trajectories_synthesis,'histogram',"",10)
+
+
+
+################   NON INDEPENDANT MUTLIDIMENSIONAL SfBM ###############################################################
+
+dimension = 3
+H = 0.15
+Hs = [H for i in range(dimension)]
+weights = np.random.randint(1, 10, dimension)
+
+weights = weights / np.sum(weights)
+lambdasquare_list,T_list,sigma_list = [0.02 for i in range(dimension)],[2**14 for i in range(dimension)],[1 for i in range(dimension)]
+Sfbms = []
+correlations = {(0,1):0.5,(0,2):0.25,(1,2):0.85}
+MultidimensionalSfbms_generalmodel = MultidimensionalSfbm(Sfbms,correlations,dimension,Hs,lambdasquare_list,T_list,sigma_list )
+
+# print("correlation matrix = ",MultidimensionalSfbms.CorrelationMatrixBuilder_from_correlations(correlations))
+Sfbms_generation_example_generalmodel = MultidimensionalSfbms_generalmodel.GenerateMultidimensionalSfbm(4000)
+print("Sfbms_generation_example_generalmodel = ",Sfbms_generation_example_generalmodel)
+# index_builder_Sfbms = MultidimensionalSfbms.Index_Builder(weights, Sfbms_generation_example,'mrm and mrw')
+# log_vol_index_generation_direct_Sfbms = MultidimensionalSfbms.GeneratelogVolMultidimSfbm_Index(weights,'quadratic variation estimate',4000)
+#
+# plt.plot(log_vol_index_generation_direct_Sfbms)
+# plt.title( f'Sfbm model 1D index - H={H} - log vol ')
+# plt.show()
+#
+# GMM_index = GMM()
+# index_estimatedGMM_paramSfbms = GMM_index.ComputeParamsGMM(log_vol_index_generation_direct_Sfbms,10)
+# print("index_estimatedGMM_paramSfbms = ", index_estimatedGMM_paramSfbms)
 
 

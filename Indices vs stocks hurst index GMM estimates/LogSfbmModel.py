@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 
 
-
 class GaussianProcess:
     def __init__(self,generation_type,covariance_matrix):
         if type(generation_type)!= str:
@@ -87,7 +86,7 @@ class Sfbm:
         mrw = np.cumsum(np.exp(om) * gg * self.sigma * np.sqrt(dt))
         mrm = np.cumsum(self.sigma * self.sigma * np.exp(2 * om) * dt)
         mrw,mrm = mrw[::subsample],mrm[::subsample]
-        mrw = np.log(np.exp(mrw))
+        #mrw = np.log(np.exp(mrw))
         return mrw,mrm
 
 
@@ -123,21 +122,68 @@ class Sfbm:
 
 
 class MultidimensionalSfbm:
-    def __init__(self,Sfbm_models,correlation=0):
+    def __init__(self,Sfbm_models,correlations={},dimension = 1,H_list=[],lambdasquare_list=[],T_list=[],sigma_list=[]):
         if type(Sfbm_models)!=list:
             TypeError("MultidimensionalSfbm error: Sfbm_models is not of expected type, list")
         if any(type(Sfbm_model)!=Sfbm for Sfbm_model in Sfbm_models):
             TypeError("MultidimensionalSfbm error: Sfbm_models is not of expected type, Sfbm")
+        All_lists = [H_list,lambdasquare_list,T_list,sigma_list]
+        if any(len(item)!=dimension for item in All_lists):
+            TypeError("MultidimensionalSfbm error: all list's size should be equal to dimension")
         else:
             self.Sfbm_models = Sfbm_models
-            self.correlation = correlation
+            self.dimension = dimension
+            if correlations:
+                self.correlation_flag = True
+                self.brownian_correlations = correlations
+            else:
+                self.correlation_flag = False
+            #self.w_correlation_matrix = None   w will be iid
+            self.H_list = H_list
+            self.lambdasquare_list = lambdasquare_list
+            self.T_list = T_list
+            self.sigma_list = sigma_list
+
+
+    def CorrelationMatrixBuilder_from_correlations(self, correlations):
+        if type(correlations)!=dict:
+            TypeError("MultidimensionalSfbm error: correlations should be a dictionary with keys of the form (i,j)")
+        correl_matrix = [[0 for i in range(self.dimension)] for i in range(self.dimension)]
+        for i in range(self.dimension):
+            for j in range(i,self.dimension):
+                if i==j:
+                    correl_matrix[i][j] = 1
+                else:
+                    correl_matrix[i][j]=correlations[(i,j)]
+        correl_matrix = np.array(correl_matrix)
+        correl_matrix = correl_matrix + correl_matrix.T - np.diag(np.diag(correl_matrix))
+        return correl_matrix
 
     def GenerateMultidimensionalSfbm(self,size=4096, subsample=8):
-        Generation_list = []
-        if self.correlation==0:
-            for Sfbm_model in self.Sfbm_models:
-                Generation_list.append(Sfbm_model.GenerateSfbm(size, subsample))
-            return Generation_list
+        log_components = []
+        if self.correlation_flag == False:
+            if self.Sfbm_models == []:
+                ValueError("MultidimensionalSfbm error: self.Sfbm_models should not be empty if correlation_flag =False")
+            else:
+                for Sfbm_model in self.Sfbm_models:
+                    log_components.append(Sfbm_model.GenerateSfbm(size, subsample))
+        else:
+            log_mrm_matrix,dt =[], 1 / subsample
+            for dimension in range(self.dimension):
+                Sfbm_model = Sfbm(self.H_list[dimension],self.lambdasquare_list[dimension],self.T_list[dimension],self.sigma_list[dimension])
+                m, corr = Sfbm_model.SfbmCorrelation(size=(size-1)*subsample, dt=dt)
+                log_mrm = GaussianProcess('LastWaveFFT', corr).Generate(size * subsample)
+                log_mrm = log_mrm + m
+                log_mrm = log_mrm[::subsample]
+                log_mrm_matrix.append(np.exp(log_mrm+m))
+            brownian_correlation_matrix = self.CorrelationMatrixBuilder_from_correlations(self.brownian_correlations)
+
+            brownian_correlation_matrix_fact = np.linalg.cholesky(brownian_correlation_matrix)
+            gg = np.random.normal(0, 1, (self.dimension, size))
+            brownian_increments = np.array([brownian_correlation_matrix_fact @ gg[:, j] for j in range(size)]).T
+            log_components =  [np.cumsum(np.exp(w) * brownian_increment * sigma * np.sqrt(dt)) for w,brownian_increment,sigma in zip(log_mrm_matrix,brownian_increments,self.sigma_list)]
+        return log_components
+
 
     def Index_Builder(self,weights,trajectories, building_type = 'mrw'):
         import matplotlib.pyplot as plt
@@ -146,24 +192,28 @@ class MultidimensionalSfbm:
         # plt.show()
         if len(weights)!= len(trajectories):
             ValueError("Sfbm error: weights and trajectories should be of the same length")
+        if len(weights) != self.dimension:
+            ValueError("Sfbm error: weights and dimension should be of the same length")
         else:
             dimension = len(weights)
-            size = len(trajectories[0][0])
+            #size = len(trajectories[0][0])
             index_mrw, index_mrm = 0,0
             #index_mrw,index_mrm = np.array([0 for i in range(size)]), np.array([0 for i in range(size)])
             if building_type =='mrw':
                 for i in range(dimension):
                     index_mrw+=weights[i] * np.exp(trajectories[i][0])
                 return index_mrw
-            if building_type =='mrm':
-                for i in range(dimension):
-                    index_mrm += weights[i]**2*(trajectories[i][1])
-                return index_mrm
-            if building_type =='mrm and mrw':
-                for i in range(dimension):
-                    index_mrm += weights[i]**2*(trajectories[i][1])
-                    index_mrw += weights[i] * np.exp(trajectories[i][0])
-                return np.log(index_mrw),index_mrm
+            if self.correlation_flag == False:
+                if building_type =='mrm':
+                    for i in range(dimension):
+                        index_mrm += weights[i]**2*(trajectories[i][1])
+                    return index_mrm
+                if building_type =='mrm and mrw':
+                    for i in range(dimension):
+                        index_mrm += weights[i]**2*(trajectories[i][1])
+                        index_mrw += weights[i] * np.exp(trajectories[i][0])
+                    return np.log(index_mrw),index_mrm
+
 
     def GeneratelogVolMultidimSfbm_Index(self,weights,method='quadratic variation estimate',size=4096, subsample=8,M=32):  #,sigma=1, M=32
         # factor = 1
@@ -191,18 +241,19 @@ class MultidimensionalSfbm:
             logvol_index = logvol_index.interpolate(limit_direction='both')
             logvol_index = logvol_index - logvol_index.mean()
             return logvol_index.values
-        if method=='direct':
-            dmm = np.diff(mrm_multidim_index)
-            dmm = np.append(dmm[0], dmm)
-            mm  = np.cumsum(dmm)
-            mm  = mm [::M]
-            mm = mm[1:] - mm[:-1]
-            logvol_index = np.log(mm )
-            logvol_index = pd.Series(logvol_index)
-            logvol_index.replace([np.inf, -np.inf], np.nan, inplace=True)
-            logvol_index = logvol_index.interpolate(limit_direction='both')
-            logvol_index = logvol_index - logvol_index.mean()
-            return logvol_index.values
+        if self.correlation_flag==False:
+            if method=='direct':
+                dmm = np.diff(mrm_multidim_index)
+                dmm = np.append(dmm[0], dmm)
+                mm  = np.cumsum(dmm)
+                mm  = mm [::M]
+                mm = mm[1:] - mm[:-1]
+                logvol_index = np.log(mm )
+                logvol_index = pd.Series(logvol_index)
+                logvol_index.replace([np.inf, -np.inf], np.nan, inplace=True)
+                logvol_index = logvol_index.interpolate(limit_direction='both')
+                logvol_index = logvol_index - logvol_index.mean()
+                return logvol_index.values
 
 class MultipleIndicesConstructor:
     def __init__(self,multiple_weights,multipleSfbm_models):
@@ -220,12 +271,12 @@ class MultipleIndicesConstructor:
             self.multiple_weights = multiple_weights
             self.multipleSfbm_models = multipleSfbm_models
 
-    def ConstructIndicestrajectories(self,size,subsample=4):
+    def ConstructIndicestrajectories(self,size,subsample=4,building_type ='mrm and mrw' ):
         Indicestrajectories = []
         for weights, Sfbm_models in zip(self.multiple_weights, self.multipleSfbm_models):
             Index = MultidimensionalSfbm(Sfbm_models)
             Sfbms_generation_example = Index.GenerateMultidimensionalSfbm(size, subsample)
-            indices_trajectories = Index.Index_Builder(weights, Sfbms_generation_example, 'mrm and mrw')
+            indices_trajectories = Index.Index_Builder(weights, Sfbms_generation_example,building_type)
             Indicestrajectories.append(indices_trajectories)
         return Indicestrajectories
 
