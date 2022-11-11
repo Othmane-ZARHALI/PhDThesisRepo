@@ -140,7 +140,7 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 
 
 
-# dimension = 5
+# dimension = 3
 # H = 0.15
 # Hs = [H for i in range(dimension)]
 # weights = np.random.randint(1, 10, dimension)
@@ -150,13 +150,15 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 # Sfbms = [Sfbm(Hs[i],0.068970 ,2**14) for i in range(dimension)]  #lambda2 = 0.068970  T=2**14
 # MultidimensionalSfbms = MultidimensionalSfbm(Sfbms)
 # Sfbms_generation_example = MultidimensionalSfbms.GenerateMultidimensionalSfbm(4000)
+#
 # index_builder_Sfbms = MultidimensionalSfbms.Index_Builder(weights, Sfbms_generation_example,'mrm and mrw')
-# log_vol_index_generation_direct_Sfbms = MultidimensionalSfbms.GeneratelogVolMultidimSfbm_Index(weights,'quadratic variation estimate',4000)
+# # print("index_builder_Sfbms = ",index_builder_Sfbms)
+# log_vol_index_generation_direct_Sfbms = MultidimensionalSfbms.GeneratelogVolMultidimSfbm_Index(weights,'quadratic variation estimate',4000,'mrw')
 #
 # plt.plot(log_vol_index_generation_direct_Sfbms)
 # plt.title( f'Sfbm model 1D index - H={H} - log vol ')
 # plt.show()
-#
+# #
 # GMM_index = GMM()
 # index_estimatedGMM_paramSfbms = GMM_index.ComputeParamsGMM(log_vol_index_generation_direct_Sfbms,10)
 # print("index_estimatedGMM_paramSfbms = ", index_estimatedGMM_paramSfbms)
@@ -168,8 +170,8 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 
 
 # H distribution
-# Number_indices = 50
-# dimension = 10
+# Number_indices = 1
+# dimension = 3
 # H = 0.15
 # Hs = [H for i in range(dimension)]
 # Multiple_weights,Multiple_Sfbms = [],[]
@@ -188,42 +190,97 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 # log_vol_indices_dic = MultipleIndicesConstructor_obj.ConstructLogVolIndicestrajectories(4000,8,'direct',keys)
 # Index_trajectories_synthesis = log_vol_indices_dic[1]
 #
-# # print("Index_trajectories_synthesis = ",Index_trajectories_synthesis)
-# # plt.plot(Index_trajectories_synthesis['Index trajectory 0'])
-# # plt.title( f'Robustness test H estimation of {H} - log vol plot')
-# # plt.show()
-#
+# print("Index_trajectories_synthesis = ",Index_trajectories_synthesis)
+# plt.plot(Index_trajectories_synthesis['Index trajectory 0'])
+# plt.title( f'Robustness test H estimation of {H} - log vol plot')
+# plt.show()
+
 # GMM_index_trajectories_obj = GMM()
-#
 # GMM_index_trajectories_obj.HurstIndexEvolution_GMMCalibration(Index_trajectories_synthesis,'histogram',"",10)
 
 
 
 ################   NON INDEPENDANT MUTLIDIMENSIONAL SfBM ###############################################################
 
-dimension = 3
-H = 0.15
-Hs = [H for i in range(dimension)]
-weights = np.random.randint(1, 10, dimension)
-
-weights = weights / np.sum(weights)
-lambdasquare_list,T_list,sigma_list = [0.02 for i in range(dimension)],[2**14 for i in range(dimension)],[1 for i in range(dimension)]
-Sfbms = []
-correlations = {(0,1):0.5,(0,2):0.25,(1,2):0.85}
-MultidimensionalSfbms_generalmodel = MultidimensionalSfbm(Sfbms,correlations,dimension,Hs,lambdasquare_list,T_list,sigma_list )
-
-# print("correlation matrix = ",MultidimensionalSfbms.CorrelationMatrixBuilder_from_correlations(correlations))
-Sfbms_generation_example_generalmodel = MultidimensionalSfbms_generalmodel.GenerateMultidimensionalSfbm(4000)
-print("Sfbms_generation_example_generalmodel = ",Sfbms_generation_example_generalmodel)
-# index_builder_Sfbms = MultidimensionalSfbms.Index_Builder(weights, Sfbms_generation_example,'mrm and mrw')
-# log_vol_index_generation_direct_Sfbms = MultidimensionalSfbms.GeneratelogVolMultidimSfbm_Index(weights,'quadratic variation estimate',4000)
+# dimension = 3
+# H = 0.05
+# #Hs = [H for i in range(dimension)]
+# Hs = [0.001236,0.064988 ,0.023365 ]
+# # weights = np.random.randint(1, 10, dimension)
+# # weights = weights / np.sum(weights)
+# weights = np.array([0.2,0.7,0.1])
+# lambdasquare_list,T_list,sigma_list = [0.02 for i in range(dimension)],[2**14 for i in range(dimension)],[1 for i in range(dimension)]
 #
-# plt.plot(log_vol_index_generation_direct_Sfbms)
+# Sfbms = []#[Sfbm(Hs[i],0.068970 ,2**14) for i in range(dimension)] #
+#
+# #correlations = {(0,1):0,(0,2):0,(0,3):0,(0,4):0,(1,2):0,(1,3):0,(1,4):0,(2,3):0,(2,4):0,(3,4):0}
+# #correlations = {(0,1):0,(0,2):0,(1,2):0}
+# correlations = {(0,1):-0.06368572,(0,2):0.9,(1,2):-0.13849021}  # => H ~ 0.33
+# #correlations = {(0,1):0.2,(0,2):0.85,(1,2):0.01}
+#
+# MultidimensionalSfbms_generalmodel = MultidimensionalSfbm(Sfbms, correlations,dimension,Hs,lambdasquare_list,T_list,sigma_list )
+# log_vol_index_generation_generalmodel_Sfbms = MultidimensionalSfbms_generalmodel.GeneratelogVolMultidimSfbm_Index(weights,'quadratic variation estimate',4000)
+# print("log_vol_index_generation_generalmodel_Sfbms = ",log_vol_index_generation_generalmodel_Sfbms)
+#
+# plt.plot(log_vol_index_generation_generalmodel_Sfbms)
 # plt.title( f'Sfbm model 1D index - H={H} - log vol ')
 # plt.show()
 #
 # GMM_index = GMM()
-# index_estimatedGMM_paramSfbms = GMM_index.ComputeParamsGMM(log_vol_index_generation_direct_Sfbms,10)
+# index_estimatedGMM_paramSfbms = GMM_index.ComputeParamsGMM(log_vol_index_generation_generalmodel_Sfbms,10)
 # print("index_estimatedGMM_paramSfbms = ", index_estimatedGMM_paramSfbms)
 
+
+
+
+
+
+
+
+
+# Robustness of the H index estimate
+
+
+Number_indices = 1
+dimension = 3
+H = 0.15
+#Hs = [H for i in range(dimension)]
+Hs = [0.001236,0.064988 ,0.023365 ]
+lambdasquare_list,T_list,sigma_list = [0.02 for i in range(dimension)],[2**14 for i in range(dimension)],[1 for i in range(dimension)]
+
+
+Multiple_weights,Multiple_Sfbms = [],[]
+Multiple_indices = dict()
+weights = np.array([0.2,0.7,0.1])
+
+for i in range(Number_indices):
+    # weights = np.random.randint(1, 10, dimension)
+    # weights = weights / np.sum(weights)
+    Multiple_weights.append(weights)
+    #Multiple_Sfbms.append([Sfbm(Hs[i],0.02 ,2**14) for i in range(dimension)])
+    Multiple_Sfbms.append([])
+
+Multiple_Hs=[Hs for i in range(Number_indices)]
+Multiple_lambdasquare_list=[lambdasquare_list for i in range(Number_indices)]
+Multiple_T_list=[T_list for i in range(Number_indices)]
+Multiple_sigma_list=[sigma_list for i in range(Number_indices)]
+correlations = {(0,1):-0.06368572,(0,2):0.9,(1,2):-0.13849021}
+Multiple_correlations = [correlations for i in range(Number_indices)]
+
+MultipleIndicesConstructor_obj = MultipleIndicesConstructor(Multiple_weights,Multiple_Sfbms,Multiple_correlations,Multiple_Hs,Multiple_lambdasquare_list,Multiple_T_list,Multiple_sigma_list)
+
+trajectories_indices = MultipleIndicesConstructor_obj.ConstructIndicestrajectories(4000)
+
+keys = ['Index trajectory' for i in range(Number_indices)]
+log_vol_indices_dic = MultipleIndicesConstructor_obj.ConstructLogVolIndicestrajectories(4000,8,'quadratic variation estimate',keys)
+
+Index_trajectories_synthesis = log_vol_indices_dic[1]
+
+# print("Index_trajectories_synthesis = ",Index_trajectories_synthesis)
+# plt.plot(Index_trajectories_synthesis['Index trajectory 0'])
+# plt.title( f'Robustness test H estimation of {H} - log vol plot')
+# plt.show()
+
+GMM_index_trajectories_obj = GMM()
+GMM_index_trajectories_obj.HurstIndexEvolution_GMMCalibration(Index_trajectories_synthesis,'histogram',"",10)
 
