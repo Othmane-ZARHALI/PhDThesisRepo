@@ -8,6 +8,21 @@ import numpy as np
 import pandas as pd
 
 
+def make_basis_vector(size, index):
+    arr = np.zeros(size)
+    arr[index] = 1.0
+    return arr
+
+def ConstructBasis(size):
+    return [make_basis_vector(size, i) for i in range(size) ]
+
+def SumMultipleArrays(list_of_arrays):
+   a = np.zeros(shape=list_of_arrays[0].shape) #initialize array of 0s
+   for array in list_of_arrays:
+      a += array
+   return a
+
+
 class GaussianProcess:
     def __init__(self,generation_type,covariance_matrix):
         if type(generation_type)!= str:
@@ -161,7 +176,7 @@ class MultidimensionalSfbm:
         correl_matrix = correl_matrix + correl_matrix.T - np.diag(np.diag(correl_matrix))
         return correl_matrix
 
-    def GenerateMultidimensionalSfbm(self,size=4096, subsample=8):
+    def GenerateMultidimensionalSfbm(self,size=4096, subsample=8,brownian_correl_method = 'Brownian correlates - classical'):
         log_components = []
         if self.correlation_flag == False:
             if self.Sfbm_models == []:
@@ -171,21 +186,26 @@ class MultidimensionalSfbm:
                 for Sfbm_model in self.Sfbm_models:
                     log_components.append(Sfbm_model.GenerateSfbm(size, subsample))
         else:
-
-            log_mrm_matrix,dt =[], 1 / subsample
+            log_mrm_matrix, dt = [], 1 / subsample
             # Independant w
             for dimension in range(self.dimension):
-                Sfbm_model = Sfbm(self.H_list[dimension],self.lambdasquare_list[dimension],self.T_list[dimension],self.sigma_list[dimension])
-                m, corr = Sfbm_model.SfbmCorrelation(size=(size-1)*subsample, dt=dt)
+                Sfbm_model = Sfbm(self.H_list[dimension], self.lambdasquare_list[dimension], self.T_list[dimension],
+                                  self.sigma_list[dimension])
+                m, corr = Sfbm_model.SfbmCorrelation(size=(size - 1) * subsample, dt=dt)
                 log_mrm = GaussianProcess('LastWaveFFT', corr).Generate(size * subsample)
                 log_mrm = log_mrm + m
                 log_mrm = log_mrm[::subsample]
                 log_mrm_matrix.append(log_mrm + m)
-            brownian_correlation_matrix = self.CorrelationMatrixBuilder_from_correlations(self.brownian_correlations)
+            if brownian_correl_method == 'Brownian correlates - classical':
+                brownian_correlation_matrix = self.CorrelationMatrixBuilder_from_correlations(self.brownian_correlations)
+            if brownian_correl_method == 'Brownian correlates - random correl matrix':
+                eigen_vectors =  ConstructBasis(self.dimension)   # canonical basis
+                eigen_values = np.exp(log_mrm_matrix[0])  # w are independant
+                brownian_correlation_matrix = SumMultipleArrays([eigen_values[i]*np.outer(eigen_vectors[i],eigen_vectors[i]) for i in range(self.dimension)])
             brownian_correlation_matrix_fact = np.linalg.cholesky(brownian_correlation_matrix)
             gg = np.random.normal(0, 1, (self.dimension, size))
             brownian_increments = np.array([brownian_correlation_matrix_fact @ gg[:, j] for j in range(size)]).T
-            log_components =  [(np.cumsum(np.exp(w) * brownian_increment * sigma * np.sqrt(dt)),np.array([])) for w,brownian_increment,sigma in zip(log_mrm_matrix,brownian_increments,self.sigma_list)]
+            log_components = [(np.cumsum(np.exp(w) * brownian_increment * sigma * np.sqrt(dt)), np.array([])) for w, brownian_increment, sigma in zip(log_mrm_matrix, brownian_increments, self.sigma_list)]
         return log_components
 
 
@@ -215,12 +235,13 @@ class MultidimensionalSfbm:
                 return np.log(index_mrw), index_mrm
 
 
-    def GeneratelogVolMultidimSfbm_Index(self,weights,method='quadratic variation estimate',size=4096, building_type = 'mrw',subsample=8,M=32):  #,sigma=1, M=32
+    def GeneratelogVolMultidimSfbm_Index(self,weights,method='quadratic variation estimate',size=4096, building_type = 'mrw',subsample=8,M=32,brownian_correl_method = 'Brownian correlates - classical'):  #,sigma=1, M=32
         # factor = 1
         # if self.H > 0:
         #     factor = M ** (-2 * self.H) / 4
         # self.lambdasquareintermittency *=  factor
-        trajectories = self.GenerateMultidimensionalSfbm(size*M, subsample)
+        trajectories = self.GenerateMultidimensionalSfbm(size*M, subsample,brownian_correl_method)
+        print("trajectories = ",trajectories)
 
         # if building_type == 'mrm':
         #     mrm_multidim_index = self.Index_Builder(weights, trajectories, building_type)
@@ -296,7 +317,7 @@ class MultipleIndicesConstructor:
             self.multiple_sigma_list = multiple_sigma_list
             self.correlation_flags = []
 
-    def ConstructIndicestrajectories(self,size,subsample=4,building_type ='mrm and mrw' ):
+    def ConstructIndicestrajectories(self,size,subsample=4,building_type ='mrm and mrw',brownian_correl_method = 'Brownian correlates - classical'):
         Indicestrajectories = []
         # for weights, Sfbm_models,correlations,Hs,lambdasquare_list,T_list,sigma_list
         # in zip(*[self.multiple_weights,self.multipleSfbm_models, self.multiple_correlations,self.multiple_Hs,
@@ -311,7 +332,7 @@ class MultipleIndicesConstructor:
             dimension = len(self.multiple_Hs[list_index])
             Index = MultidimensionalSfbm(Sfbm_models,self.multiple_correlations[list_index],dimension,self.multiple_Hs[list_index],self.multiple_lambdasquare_list[list_index],self.multiple_T_list[list_index],self.multiple_sigma_list[list_index])
             self.correlation_flags.append(Index.correlation_flag)
-            Sfbms_generation_example = Index.GenerateMultidimensionalSfbm(size, subsample)
+            Sfbms_generation_example = Index.GenerateMultidimensionalSfbm(size, subsample,brownian_correl_method)
 
             indices_trajectories = Index.Index_Builder(weights, Sfbms_generation_example,building_type)
             Indicestrajectories.append(indices_trajectories)
@@ -320,9 +341,9 @@ class MultipleIndicesConstructor:
         return Indicestrajectories
 
 
-    def ConstructLogVolIndicestrajectories(self,size,subsample=8,method='quadratic variation estimate',keys = [],M = 32):
+    def ConstructLogVolIndicestrajectories(self,size,subsample=8,method='quadratic variation estimate',keys = [],M = 32,brownian_correl_method = 'Brownian correlates - classical',building_type = 'mrw'):
 
-        log_vol_indices_trajectories,indices_trajectories = [],self.ConstructIndicestrajectories(size*M,subsample)
+        log_vol_indices_trajectories,indices_trajectories = [],self.ConstructIndicestrajectories(size*M,subsample,building_type,brownian_correl_method)
         if keys != []:
             if len(indices_trajectories)!=len(keys):
                 ValueError("MultipleIndicesConstructor error: keys and indices_trajectories should be of the same length")
