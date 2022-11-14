@@ -296,16 +296,18 @@ class MultipleIndicesConstructor:
             self.multiple_sigma_list = multiple_sigma_list
             self.correlation_flags = []
 
-
-
-
     def ConstructIndicestrajectories(self,size,subsample=4,building_type ='mrm and mrw' ):
         Indicestrajectories = []
         # for weights, Sfbm_models,correlations,Hs,lambdasquare_list,T_list,sigma_list
         # in zip(*[self.multiple_weights,self.multipleSfbm_models, self.multiple_correlations,self.multiple_Hs,
         # self.multiple_lambdasquare_list,self.multiple_T_list,self.multiple_sigma_list]):
+        list_index = 0
         for weights, Sfbm_models in zip(self.multiple_weights, self.multipleSfbm_models):
-            list_index = self.multiple_weights.index(weights)
+            # print("self.multiple_weights = ", self.multiple_weights)
+            # print("weights = ", weights)
+            # print("self.multiple_weights.index(weights) = ", self.multiple_weights.index(weights))
+            #list_index = self.multiple_weights.index(weights)
+
             dimension = len(self.multiple_Hs[list_index])
             Index = MultidimensionalSfbm(Sfbm_models,self.multiple_correlations[list_index],dimension,self.multiple_Hs[list_index],self.multiple_lambdasquare_list[list_index],self.multiple_T_list[list_index],self.multiple_sigma_list[list_index])
             self.correlation_flags.append(Index.correlation_flag)
@@ -313,20 +315,20 @@ class MultipleIndicesConstructor:
 
             indices_trajectories = Index.Index_Builder(weights, Sfbms_generation_example,building_type)
             Indicestrajectories.append(indices_trajectories)
+
+            list_index+=1
         return Indicestrajectories
 
 
     def ConstructLogVolIndicestrajectories(self,size,subsample=8,method='quadratic variation estimate',keys = [],M = 32):
 
         log_vol_indices_trajectories,indices_trajectories = [],self.ConstructIndicestrajectories(size*M,subsample)
-        print("indices_trajectories = ", indices_trajectories)
         if keys != []:
             if len(indices_trajectories)!=len(keys):
                 ValueError("MultipleIndicesConstructor error: keys and indices_trajectories should be of the same length")
         Multiple_indices_dic = dict()
         for i in range(len(indices_trajectories)):
             if self.correlation_flags[i] == False:
-                #for index_trajectory in indices_trajectories:
                 if method == 'quadratic variation estimate':
                     dvv = np.diff(indices_trajectories[i][0])
                     dvv = np.append(dvv[0], dvv)
