@@ -377,46 +377,86 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 # Increase the number of stocks - see the impact
 
 
-Number_indices = 50
-dimension = 5
-#H = 0.15
-#Hs = [H for i in range(dimension)]
-#Hs = [0.001236,0.064988 ,0.023365 ]
-Hs = [0,0,0,0,0]  # H_index non null
-lambdasquare_list,T_list,sigma_list = [0.02 for i in range(dimension)],[2**14 for i in range(dimension)],[1 for i in range(dimension)]
-
-
-Multiple_weights,Multiple_Sfbms = [],[]
-Multiple_indices = dict()
-weights = np.array([0.2,0.45,0.1,0.15,0.1])
-
-for i in range(Number_indices):
-    # weights = np.random.randint(1, 10, dimension)
-    # weights = weights / np.sum(weights)
-    Multiple_weights.append(weights)
-    #Multiple_Sfbms.append([Sfbm(Hs[i],0.02 ,2**14) for i in range(dimension)])
-    Multiple_Sfbms.append([])
-
-Multiple_Hs=[Hs for i in range(Number_indices)]
-Multiple_lambdasquare_list=[lambdasquare_list for i in range(Number_indices)]
-Multiple_T_list=[T_list for i in range(Number_indices)]
-Multiple_sigma_list=[sigma_list for i in range(Number_indices)]
-correlations = {(0,1):-0.06,(0,2):0.9,(0,3):0.4,(0,4):0.02,(1,2):-0.7,(1,3):0.41,(1,4):-0.91,(2,3):-0.1,(2,4):-0.1,(3,4):0.95}
-Multiple_correlations = [correlations for i in range(Number_indices)]
-
-MultipleIndicesConstructor_obj = MultipleIndicesConstructor(Multiple_weights,Multiple_Sfbms,Multiple_correlations,Multiple_Hs,Multiple_lambdasquare_list,Multiple_T_list,Multiple_sigma_list)
-
-trajectories_indices = MultipleIndicesConstructor_obj.ConstructIndicestrajectories(4000,8,'mrw','Brownian correlates - random correl matrix')
-
-keys = ['Index trajectory' for i in range(Number_indices)]
-log_vol_indices_dic = MultipleIndicesConstructor_obj.ConstructLogVolIndicestrajectories(4000,8,'quadratic variation estimate',keys,32,'Brownian correlates - random correl matrix')
-
-Index_trajectories_synthesis = log_vol_indices_dic[1]
-
+# Number_indices = 50
+# dimension = 5
+# H = 0
+# #Hs = [H for i in range(dimension)]
+# #Hs = [0.001236,0.064988 ,0.023365 ]
+# Hs = [0,0,0,0,0]  # H_index non null
+# lambdasquare_list,T_list,sigma_list = [0.02 for i in range(dimension)],[2**14 for i in range(dimension)],[1 for i in range(dimension)]
+#
+#
+# Multiple_weights,Multiple_Sfbms = [],[]
+# Multiple_indices = dict()
+# weights = np.array([0.2,0.45,0.1,0.15,0.1])
+#
+# for i in range(Number_indices):
+#     # weights = np.random.randint(1, 10, dimension)
+#     # weights = weights / np.sum(weights)
+#     Multiple_weights.append(weights)
+#     #Multiple_Sfbms.append([Sfbm(Hs[i],0.02 ,2**14) for i in range(dimension)])
+#     Multiple_Sfbms.append([])
+#
+# Multiple_Hs=[Hs for i in range(Number_indices)]
+# Multiple_lambdasquare_list=[lambdasquare_list for i in range(Number_indices)]
+# Multiple_T_list=[T_list for i in range(Number_indices)]
+# Multiple_sigma_list=[sigma_list for i in range(Number_indices)]
+# correlations = {(0,1):-0.06,(0,2):0.9,(0,3):0.4,(0,4):0.02,(1,2):-0.7,(1,3):0.41,(1,4):-0.91,(2,3):-0.1,(2,4):-0.1,(3,4):0.95}
+# Multiple_correlations = [correlations for i in range(Number_indices)]
+#
+# MultipleIndicesConstructor_obj = MultipleIndicesConstructor(Multiple_weights,Multiple_Sfbms,Multiple_correlations,Multiple_Hs,Multiple_lambdasquare_list,Multiple_T_list,Multiple_sigma_list)
+#
+# trajectories_indices = MultipleIndicesConstructor_obj.ConstructIndicestrajectories(4000,8,'mrw','Brownian correlates - random correl matrix')
+#
+# keys = ['Index trajectory' for i in range(Number_indices)]
+# log_vol_indices_dic = MultipleIndicesConstructor_obj.ConstructLogVolIndicestrajectories(4000,8,'quadratic variation estimate',keys,32,'Brownian correlates - random correl matrix')
+#
+# Index_trajectories_synthesis = log_vol_indices_dic[1]
+#
 # print("Index_trajectories_synthesis = ",Index_trajectories_synthesis)
 # plt.plot(Index_trajectories_synthesis['Index trajectory 0'])
 # plt.title( f'Robustness test H estimation of {H} - log vol plot')
 # plt.show()
+#
+# GMM_index_trajectories_obj = GMM()
+# GMM_index_trajectories_obj.HurstIndexEvolution_GMMCalibration(Index_trajectories_synthesis,'histogram',"",10)
 
-GMM_index_trajectories_obj = GMM()
-GMM_index_trajectories_obj.HurstIndexEvolution_GMMCalibration(Index_trajectories_synthesis,'histogram',"",10)
+
+
+
+
+########################################################################################################################
+
+# Theoretical formulas
+
+from TheoreticalFormulas import *
+dimension = 3
+correlations = {(0,1):-0.06,(0,2):0.9,(0,3):0.4,(0,4):0.02,(1,2):-0.7,(1,3):0.41,(1,4):-0.91,(2,3):-0.1,(2,4):-0.1,(3,4):0.95}
+correlations3={(0,1):0.06,(0,2):0.9,(1,2):0.7}
+lambdasquare_list,T_list,sigma_list = [0.2 for i in range(dimension)],[2**10 for i in range(dimension)],[1 for i in range(dimension)]
+h_threashold =  1 / log((2**(11.5)) **2)
+H_list = [0.01,0.02,0.03]
+#H_list = [h_threashold,h_threashold,h_threashold]
+alpha_list = [0.5,0.3,0.2]
+hurst_index = VarIndexHurst(correlations3,H_list,alpha_list,lambdasquare_list,T_list,sigma_list)
+# print("hurst_index = ",hurst_index.ComputeHurst())
+# print("bounds = ",hurst_index.ComputeBounds())
+#print("linear lower bounds = ",hurst_index.ComputeLinearLowerbound())  # available for high H_i's
+# print("asympt T infty Hurst = ",hurst_index.ComputeFirstOrderApproximations())
+# print("asympt small interm Hurst = ",hurst_index.ComputeFirstOrderApproximations('Brownian correlates - classical','Small intermittencies'))
+
+# the intermittencies play an important role in hurst valuation
+
+#plot wrt T
+Number_indices = 500
+Multiple_Hs=[H_list for i in range(Number_indices)]
+Multiple_lambdasquare_list=[lambdasquare_list for i in range(Number_indices)]
+T_values = np.linspace(1,2**100,Number_indices)
+Multiple_T_list=[[T_value for i in range(3)] for T_value in T_values]
+Multiple_sigma_list=[sigma_list for i in range(Number_indices)]
+Multiple_alphas = [alpha_list for i in range(Number_indices)]
+Multiple_correlations = [correlations3 for i in range(Number_indices)]
+
+arguments = {'T':Multiple_T_list,'correl':Multiple_correlations,'alpha_lists':Multiple_alphas,'H_list':Multiple_Hs,'lambda_square_list':Multiple_lambdasquare_list,'sigma':Multiple_sigma_list}
+hurst_index.ComputeEvolution('T without bounds',arguments)
+

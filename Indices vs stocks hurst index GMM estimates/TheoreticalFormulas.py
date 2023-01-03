@@ -5,11 +5,8 @@
 
 
 # Importations
+import numpy as np
 import matplotlib.pyplot as plt
-
-from DataAcquisition import *
-from LogSfbmModel import *
-from GMMCalibration import *
 from math import log,exp
 
 import warnings
@@ -46,7 +43,6 @@ class VarIndexHurst:
                         S += self.alpha_list[i] * self.alpha_list[j] * exp(
                             1 / 2 * (self.nus_square_list[i] * self.T ** (2 * self.H_list[i]) + self.nus_square_list[
                                 j] * self.T ** (2 * self.H_list[i])))
-
                     elif i < j:
                         S+=self.alpha_list[i]*self.alpha_list[j]*self.brownian_correlations[(i,j)]*exp(1/2*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[j]*self.T**(2*self.H_list[i])))
                     else:
@@ -56,7 +52,6 @@ class VarIndexHurst:
             # print("(2/3*self.nu_square) = ",(2/3*self.nu_square))
             # print("log(S) = ",log(S))
             # print("log((2/3*self.nu_square)*log(S)) = ", log((2/3*self.nu_square)*log(S)))
-
             return log((2/3*self.nu_square)*log(S))/log(self.T**2)
         else:
             return "Not available"
@@ -78,12 +73,12 @@ class VarIndexHurst:
                         A_d += self.alpha_list[i] * self.alpha_list[j] * self.brownian_correlations[(j, i)]
             if check_positivity == False:
                 return {'Lowerbound': (1 / log(self.T ** 2)) * log(
-                    2 / (3 * min(self.nus_square_list)) * log(A_d) + (2 * self.nu_inf_square) / (3 * self.nu_sup_square)),
+                    2 / (3 * self.nu_inf_square) * log(A_d) + (2 * self.nu_inf_square) / (3 * self.nu_sup_square)),
                         'Upperbound': (1 / log(self.T ** 2)) * log(
-                            2 / (3 * min(self.nus_square_list)) * log(A_d) + (2 * self.nu_inf_square) / (3 * self.nu_sup_square) * self.T)}
+                            2 / (3 * self.nu_inf_square) * log(A_d) + (2 * self.nu_inf_square) / (3 * self.nu_sup_square) * self.T)}
             if check_boundedness == False:
                 return {'Lowerbound': (1 / log(self.T ** 2)) * log(
-                    2 / (3 * min(self.nus_square_list)) * log(A_d) + (2 * self.nu_inf_square) / (3 * self.nu_sup_square)),
+                    2 / (3 *  self.nu_inf_square) * log(A_d) + (2 * self.nu_inf_square) / (3 * self.nu_sup_square)),
                         'Upperbound': (1 / log(self.T ** 2)) * log((2 * self.nu_inf_square) / (3 * self.nu_sup_square))+1/2}
         else:
             return "Not available"
@@ -152,4 +147,31 @@ class VarIndexHurst:
                             double_sum += 3*self.nu_square*self.alpha_list[i] * self.alpha_list[j] * self.brownian_correlations[(i, j)]/(4*log(A_d)*A_d)*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[i]*self.T**(2*self.H_list[j]))
                         else:
                             double_sum +=  3*self.nu_square*self.alpha_list[i] * self.alpha_list[j] * self.brownian_correlations[(j, i)]/(4*log(A_d)*A_d)*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[i]*self.T**(2*self.H_list[j]))
+                print("log(A_d) = ",log(A_d))
                 return(1/log(self.T**2))*(log(2/(3*self.nu_square)*log(A_d))+double_sum)
+
+    def ComputeEvolution(self,type,hurst_arguments,brownian_correl_method = 'Brownian correlates - classical'):
+        print("hurst_arguments = ",hurst_arguments,type(hurst_arguments))
+        if type(hurst_arguments) != dict:
+            TypeError("VarIndexHurst ComputeEvolution error: hurst_arguments is not of expected type, dict")
+        else:
+            if type == 'T without bounds':
+                length = len(hurst_arguments['T'])
+                Ts = [np.mean(np.array(T_list)) for T_list in hurst_arguments['T']]
+                hursts = [VarIndexHurst(hurst_arguments['correl'][i],hurst_arguments['H_list'][i],hurst_arguments['alpha_lits'][i],hurst_arguments['lambda_square_list'][i],hurst_arguments['T'][i],hurst_arguments['sigma'][i]).ComputeHurst(brownian_correl_method) for i in range(length)]
+                plt.plot(Ts,hursts,label='Hurst index')
+                plt.legend()
+                plt.title("Hurst index evolution with respect to T")
+                plt.show()
+            if type == 'T with bounds':
+                length = len(hurst_arguments['T'])
+                Ts = [np.mean(np.array(T_list)) for T_list in hurst_arguments['T']]
+                hursts_lowerbound = [VarIndexHurst(hurst_arguments['correl'][i],hurst_arguments['H_list'][i],hurst_arguments['alpha_lists'][i],hurst_arguments['lambda_square_list'][i],hurst_arguments['T'][i],hurst_arguments['sigma'][i]).ComputeBounds(brownian_correl_method)['Lowerbound'] for i in range(length)]
+                hursts_upperbound = [VarIndexHurst(hurst_arguments['correl'][i], hurst_arguments['H_list'][i], hurst_arguments['alpha_lits'][i],hurst_arguments['lambda_square_list'][i], hurst_arguments['T'][i],hurst_arguments['sigma'][i]).ComputeBounds(brownian_correl_method)['Upperbound'] for i in range(length)]
+                hursts = [VarIndexHurst(hurst_arguments['correl'][i], hurst_arguments['H_list'][i],hurst_arguments['alpha_lits'][i], hurst_arguments['lambda_square_list'][i],hurst_arguments['T'][i], hurst_arguments['sigma'][i]).ComputeHurst(brownian_correl_method) for i in range(length)]
+                plt.plot(Ts,hursts_lowerbound,label='Hurst index lowerbound')
+                plt.plot(Ts, hursts_upperbound, label='Hurst index upperbound')
+                plt.plot(Ts, hursts, label='Hurst index upperbound')
+                plt.legend()
+                plt.title("Hurst index evolution with bounds with respect to T")
+                plt.show()
