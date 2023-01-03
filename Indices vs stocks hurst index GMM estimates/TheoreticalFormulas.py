@@ -150,28 +150,60 @@ class VarIndexHurst:
                 print("log(A_d) = ",log(A_d))
                 return(1/log(self.T**2))*(log(2/(3*self.nu_square)*log(A_d))+double_sum)
 
-    def ComputeEvolution(self,type,hurst_arguments,brownian_correl_method = 'Brownian correlates - classical'):
-        print("hurst_arguments = ",hurst_arguments,type(hurst_arguments))
+    def ComputeEvolution(self,evolution_type,with_asymptotics,hurst_arguments,brownian_correl_method = 'Brownian correlates - classical'):
         if type(hurst_arguments) != dict:
             TypeError("VarIndexHurst ComputeEvolution error: hurst_arguments is not of expected type, dict")
         else:
-            if type == 'T without bounds':
-                length = len(hurst_arguments['T'])
-                Ts = [np.mean(np.array(T_list)) for T_list in hurst_arguments['T']]
-                hursts = [VarIndexHurst(hurst_arguments['correl'][i],hurst_arguments['H_list'][i],hurst_arguments['alpha_lits'][i],hurst_arguments['lambda_square_list'][i],hurst_arguments['T'][i],hurst_arguments['sigma'][i]).ComputeHurst(brownian_correl_method) for i in range(length)]
-                plt.plot(Ts,hursts,label='Hurst index')
-                plt.legend()
-                plt.title("Hurst index evolution with respect to T")
-                plt.show()
-            if type == 'T with bounds':
-                length = len(hurst_arguments['T'])
-                Ts = [np.mean(np.array(T_list)) for T_list in hurst_arguments['T']]
-                hursts_lowerbound = [VarIndexHurst(hurst_arguments['correl'][i],hurst_arguments['H_list'][i],hurst_arguments['alpha_lists'][i],hurst_arguments['lambda_square_list'][i],hurst_arguments['T'][i],hurst_arguments['sigma'][i]).ComputeBounds(brownian_correl_method)['Lowerbound'] for i in range(length)]
-                hursts_upperbound = [VarIndexHurst(hurst_arguments['correl'][i], hurst_arguments['H_list'][i], hurst_arguments['alpha_lits'][i],hurst_arguments['lambda_square_list'][i], hurst_arguments['T'][i],hurst_arguments['sigma'][i]).ComputeBounds(brownian_correl_method)['Upperbound'] for i in range(length)]
-                hursts = [VarIndexHurst(hurst_arguments['correl'][i], hurst_arguments['H_list'][i],hurst_arguments['alpha_lits'][i], hurst_arguments['lambda_square_list'][i],hurst_arguments['T'][i], hurst_arguments['sigma'][i]).ComputeHurst(brownian_correl_method) for i in range(length)]
+            length = len(hurst_arguments['T_lists'])
+            if evolution_type == 'T without bounds':
+                Ts = [np.mean(np.array(T_list)) for T_list in hurst_arguments['T_lists']]
+                hursts = [VarIndexHurst(hurst_arguments['correl_lists'][i],hurst_arguments['H_lists'][i],hurst_arguments['alpha_lists'][i],hurst_arguments['lambda_square_lists'][i],hurst_arguments['T_lists'][i],hurst_arguments['sigma_lists'][i]).ComputeHurst(brownian_correl_method) for i in range(length)]
+                print("hursts = ",hursts)
+                if with_asymptotics == True:
+                    asymptotic_T_hurst = [VarIndexHurst(hurst_arguments['correl_lists'][i],hurst_arguments['H_lists'][i],hurst_arguments['alpha_lists'][i],hurst_arguments['lambda_square_lists'][i],hurst_arguments['T_lists'][i],hurst_arguments['sigma_lists'][i]).ComputeFirstOrderApproximations(brownian_correl_method,"T infty") for i in range(length)]
+                    plt.plot(Ts, hursts, label='Hurst index')
+                    plt.plot(Ts, asymptotic_T_hurst, label='Asymptotic hurst')
+                    plt.legend()
+                    plt.title("Hurst index evolution with respect to T")
+                    plt.show()
+                else:
+                    plt.plot(Ts, hursts, label='Hurst index')
+                    plt.legend()
+                    plt.title("Hurst index evolution with respect to T")
+                    plt.show()
+            if evolution_type == 'T with bounds':
+                Ts = [np.mean(np.array(T_list)) for T_list in hurst_arguments['T_lists']]
+                hursts_lowerbound = [VarIndexHurst(hurst_arguments['correl_lists'][i],hurst_arguments['H_lists'][i],hurst_arguments['alpha_lists'][i],hurst_arguments['lambda_square_lists'][i],hurst_arguments['T_lists'][i],hurst_arguments['sigma_lists'][i]).ComputeBounds(brownian_correl_method)['Lowerbound'] for i in range(length)]
+                hursts_upperbound = [VarIndexHurst(hurst_arguments['correl_lists'][i],hurst_arguments['H_lists'][i],hurst_arguments['alpha_lists'][i],hurst_arguments['lambda_square_lists'][i],hurst_arguments['T_lists'][i],hurst_arguments['sigma_lists'][i]).ComputeBounds(brownian_correl_method)['Upperbound'] for i in range(length)]
+                hursts = [VarIndexHurst(hurst_arguments['correl_lists'][i],hurst_arguments['H_lists'][i],hurst_arguments['alpha_lists'][i],hurst_arguments['lambda_square_lists'][i],hurst_arguments['T_lists'][i],hurst_arguments['sigma_lists'][i]).ComputeHurst(brownian_correl_method) for i in range(length)]
                 plt.plot(Ts,hursts_lowerbound,label='Hurst index lowerbound')
                 plt.plot(Ts, hursts_upperbound, label='Hurst index upperbound')
-                plt.plot(Ts, hursts, label='Hurst index upperbound')
+                plt.plot(Ts, hursts, label='Hurst index')
                 plt.legend()
                 plt.title("Hurst index evolution with bounds with respect to T")
                 plt.show()
+            if evolution_type == 'Intermittencies':
+                lambdas = [np.mean(np.array(lambda_square_list)) for lambda_square_list in hurst_arguments['lambda_square_lists']]
+                hursts = [VarIndexHurst(hurst_arguments['correl_lists'][i], hurst_arguments['H_lists'][i],
+                                        hurst_arguments['alpha_lists'][i],
+                                        hurst_arguments['lambda_square_lists'][i], hurst_arguments['T_lists'][i],
+                                        hurst_arguments['sigma_lists'][i]).ComputeHurst(brownian_correl_method) for
+                          i in range(length)]
+                print("hursts = ", hursts)
+                if with_asymptotics == True:
+                    asymptotic_T_hurst = [
+                        VarIndexHurst(hurst_arguments['correl_lists'][i], hurst_arguments['H_lists'][i],
+                                      hurst_arguments['alpha_lists'][i], hurst_arguments['lambda_square_lists'][i],
+                                      hurst_arguments['T_lists'][i],
+                                      hurst_arguments['sigma_lists'][i]).ComputeFirstOrderApproximations(
+                            brownian_correl_method, "Small intermittencies") for i in range(length)]
+                    plt.plot(lambdas, hursts, label='Hurst index')
+                    plt.plot(lambdas, asymptotic_T_hurst, label='Asymptotic hurst')
+                    plt.legend()
+                    plt.title("Hurst index evolution with respect to intermittencies")
+                    plt.show()
+                else:
+                    plt.plot(lambdas, hursts, label='Hurst index')
+                    plt.legend()
+                    plt.title("Hurst index evolution with respect to intermittencies")
+                    plt.show()

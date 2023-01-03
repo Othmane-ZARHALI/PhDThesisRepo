@@ -433,13 +433,13 @@ from TheoreticalFormulas import *
 dimension = 3
 correlations = {(0,1):-0.06,(0,2):0.9,(0,3):0.4,(0,4):0.02,(1,2):-0.7,(1,3):0.41,(1,4):-0.91,(2,3):-0.1,(2,4):-0.1,(3,4):0.95}
 correlations3={(0,1):0.06,(0,2):0.9,(1,2):0.7}
-lambdasquare_list,T_list,sigma_list = [0.2 for i in range(dimension)],[2**10 for i in range(dimension)],[1 for i in range(dimension)]
+lambdasquare_list,T_list,sigma_list = [0.02 for i in range(dimension)],[2**100 for i in range(dimension)],[1 for i in range(dimension)] #
 h_threashold =  1 / log((2**(11.5)) **2)
 H_list = [0.01,0.02,0.03]
 #H_list = [h_threashold,h_threashold,h_threashold]
 alpha_list = [0.5,0.3,0.2]
 hurst_index = VarIndexHurst(correlations3,H_list,alpha_list,lambdasquare_list,T_list,sigma_list)
-# print("hurst_index = ",hurst_index.ComputeHurst())
+print("hurst_index = ",hurst_index.ComputeHurst())
 # print("bounds = ",hurst_index.ComputeBounds())
 #print("linear lower bounds = ",hurst_index.ComputeLinearLowerbound())  # available for high H_i's
 # print("asympt T infty Hurst = ",hurst_index.ComputeFirstOrderApproximations())
@@ -448,15 +448,22 @@ hurst_index = VarIndexHurst(correlations3,H_list,alpha_list,lambdasquare_list,T_
 # the intermittencies play an important role in hurst valuation
 
 #plot wrt T
-Number_indices = 500
+Number_indices = 100
 Multiple_Hs=[H_list for i in range(Number_indices)]
 Multiple_lambdasquare_list=[lambdasquare_list for i in range(Number_indices)]
-T_values = np.linspace(1,2**100,Number_indices)
+T_values = np.linspace(50,2**50,Number_indices)
 Multiple_T_list=[[T_value for i in range(3)] for T_value in T_values]
 Multiple_sigma_list=[sigma_list for i in range(Number_indices)]
 Multiple_alphas = [alpha_list for i in range(Number_indices)]
 Multiple_correlations = [correlations3 for i in range(Number_indices)]
 
-arguments = {'T':Multiple_T_list,'correl':Multiple_correlations,'alpha_lists':Multiple_alphas,'H_list':Multiple_Hs,'lambda_square_list':Multiple_lambdasquare_list,'sigma':Multiple_sigma_list}
-hurst_index.ComputeEvolution('T without bounds',arguments)
+# arguments = {'T_lists':Multiple_T_list,'correl_lists':Multiple_correlations,'alpha_lists':Multiple_alphas,'H_lists':Multiple_Hs,'lambda_square_lists':Multiple_lambdasquare_list,'sigma_lists':Multiple_sigma_list}
+# hurst_index.ComputeEvolution('T without bounds',True,arguments)
+# hurst_index.ComputeEvolution('T with bounds',True,arguments)
+
+lambda_values = np.linspace(0.01,0.02,Number_indices)
+Multiple_T_fixed_list=[[2**50,2**50,2**50 ] for i in range(Number_indices)]
+arguments_lambda = {'T_lists':Multiple_T_fixed_list,'correl_lists':Multiple_correlations,'alpha_lists':Multiple_alphas,'H_lists':Multiple_Hs,'lambda_square_lists':lambda_values,'sigma_lists':Multiple_sigma_list}
+hurst_index.ComputeEvolution('Intermittencies',True,arguments_lambda)
+
 
