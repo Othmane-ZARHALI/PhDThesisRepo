@@ -84,7 +84,7 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 # # Independent case
 # MultidimS_fbm_model = MultidimensionalSfbm([Sfbm(H=0.03),Sfbm(H=0.03)])
 # S_fbm_model_mutlidimensionalgeneration_example = MultidimS_fbm_model.GenerateMultidimensionalSfbm(4000)
-# #print(S_fbm_model_mutlidimensionalgeneration_example)
+# print("multi = ",S_fbm_model_mutlidimensionalgeneration_example)
 # index_builder = MultidimS_fbm_model.Index_Builder([0.5,0.5],S_fbm_model_mutlidimensionalgeneration_example,'mrm and mrw')
 # log_vol_index_generation_direct = MultidimS_fbm_model.GeneratelogVolMultidimSfbm_Index([0.5,0.5],'direct',4000)
 #
@@ -120,8 +120,8 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 # size = 4000
 # H=0.1
 # S_fbm_model = Sfbm(H,0.02,2**14) #T=0.732075  lambda2 = 0.068970
-# Sfbmcorrelation = S_fbm_model.SfbmCorrelation(size)
-# S_fbm_model_generation_example = S_fbm_model.GenerateSfbm(size)
+# # Sfbmcorrelation = S_fbm_model.SfbmCorrelation(size)
+# S_fbm_model_generation_example = S_fbm_model.GenerateSfbm()
 #
 #
 # S_fbm_model_logvolgeneration_example = S_fbm_model.GeneratelogVol(size)
@@ -309,7 +309,7 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 # #correlations = {(0,1):0,(0,2):0,(1,2):0}
 # correlations = {(0,1):-0.06368572,(0,2):0.9,(1,2):-0.13849021}  # => H ~ 0.33
 # #correlations = {(0,1):0.2,(0,2):0.85,(1,2):0.01}
-#
+# #
 # MultidimensionalSfbms_generalmodel = MultidimensionalSfbm(Sfbms, correlations,dimension,Hs,lambdasquare_list,T_list,sigma_list )
 # log_vol_index_generation_generalmodel_Sfbms = MultidimensionalSfbms_generalmodel.GeneratelogVolMultidimSfbm_Index(weights,'quadratic variation estimate',4000,'mrw',8,32,'Brownian correlates - random correl matrix')
 # print("log_vol_index_generation_generalmodel_Sfbms = ",log_vol_index_generation_generalmodel_Sfbms)
@@ -439,31 +439,53 @@ H_list = [0.01,0.02,0.03]
 #H_list = [h_threashold,h_threashold,h_threashold]
 alpha_list = [0.5,0.3,0.2]
 hurst_index = VarIndexHurst(correlations3,H_list,alpha_list,lambdasquare_list,T_list,sigma_list)
-print("hurst_index = ",hurst_index.ComputeHurst())
+#print("hurst_index = ",hurst_index.ComputeHurst())
 # print("bounds = ",hurst_index.ComputeBounds())
 #print("linear lower bounds = ",hurst_index.ComputeLinearLowerbound())  # available for high H_i's
 # print("asympt T infty Hurst = ",hurst_index.ComputeFirstOrderApproximations())
-# print("asympt small interm Hurst = ",hurst_index.ComputeFirstOrderApproximations('Brownian correlates - classical','Small intermittencies'))
+#print("asympt small interm Hurst = ",hurst_index.ComputeFirstOrderApproximations('Brownian correlates - classical','Small intermittencies'))
+
+g_i_j_matrix={(0,1):0.06,(0,2):0.9,(1,2):0.7}
+#print("hurst_index _ general case model = ",hurst_index.ComputeHurst('General case',g_i_j_matrix))
+
 
 # the intermittencies play an important role in hurst valuation
 
 #plot wrt T
-Number_indices = 100
-Multiple_Hs=[H_list for i in range(Number_indices)]
-Multiple_lambdasquare_list=[lambdasquare_list for i in range(Number_indices)]
-T_values = np.linspace(50,2**50,Number_indices)
-Multiple_T_list=[[T_value for i in range(3)] for T_value in T_values]
-Multiple_sigma_list=[sigma_list for i in range(Number_indices)]
-Multiple_alphas = [alpha_list for i in range(Number_indices)]
-Multiple_correlations = [correlations3 for i in range(Number_indices)]
-
+# Number_indices = 100
+# Multiple_Hs=[H_list for i in range(Number_indices)]
+# Multiple_lambdasquare_list=[lambdasquare_list for i in range(Number_indices)]
+# T_values = np.linspace(50,2**50,Number_indices)
+# Multiple_T_list=[[T_value for i in range(3)] for T_value in T_values]
+# Multiple_sigma_list=[sigma_list for i in range(Number_indices)]
+# Multiple_alphas = [alpha_list for i in range(Number_indices)]
+# Multiple_correlations = [correlations3 for i in range(Number_indices)]
+#
 # arguments = {'T_lists':Multiple_T_list,'correl_lists':Multiple_correlations,'alpha_lists':Multiple_alphas,'H_lists':Multiple_Hs,'lambda_square_lists':Multiple_lambdasquare_list,'sigma_lists':Multiple_sigma_list}
 # hurst_index.ComputeEvolution('T without bounds',True,arguments)
 # hurst_index.ComputeEvolution('T with bounds',True,arguments)
 
-lambda_values = np.linspace(0.01,0.02,Number_indices)
-Multiple_T_fixed_list=[[2**50,2**50,2**50 ] for i in range(Number_indices)]
-arguments_lambda = {'T_lists':Multiple_T_fixed_list,'correl_lists':Multiple_correlations,'alpha_lists':Multiple_alphas,'H_lists':Multiple_Hs,'lambda_square_lists':lambda_values,'sigma_lists':Multiple_sigma_list}
-hurst_index.ComputeEvolution('Intermittencies',True,arguments_lambda)
+#plot wrt lambda2
+# Number_indices_lambda = 50
+# lambda_values = np.linspace(0.005,0.02,Number_indices_lambda)
+# Multiple_lambda_values=[[lambda_value for i in range(3)] for lambda_value in lambda_values]
+# Multiple_T_fixed_list=[[2**100 for j in range(3)] for i in range(Number_indices_lambda)]
+# arguments_lambda = {'T_lists':Multiple_T_fixed_list,'correl_lists':Multiple_correlations,'alpha_lists':Multiple_alphas,'H_lists':Multiple_Hs,'lambda_square_lists':Multiple_lambda_values,'sigma_lists':Multiple_sigma_list}
+# hurst_index.ComputeEvolution('Intermittencies',True,arguments_lambda)
+
+#g_ij calibration
+correlationscalib={(0,1):0.9,(0,2):0.9,(1,2):0.9}
+lambdasquare_list,T_list,sigma_list = [0.07 for i in range(dimension)],[2 for i in range(dimension)],[1 for i in range(dimension)] #
+hurst_index_calibration = VarIndexHurst(correlationscalib, [0.001,0.03,0.001],alpha_list,lambdasquare_list,T_list,sigma_list)
+#print(Sfbm().GenerateShiftedMRM_sample(1,5,5))
+#print(hurst_index.ComputeCrossMRMCovCurvature(5,0,1,10))
+#print(hurst_index.ComputeSmoothCrossCov(0.05,0,2,10,"MRMCovCurvature_normalized"))
+from time import time
+#t=time()
+print(hurst_index.g_i_j_Calibration(0.005,0,2,100))
+#print(time()-t)
+
+# // 36sec vs sequential 55.44 sec
+
 
 

@@ -5,9 +5,13 @@
 
 
 # Importations
+from LogSfbmModel import Sfbm
+
 import numpy as np
 import matplotlib.pyplot as plt
-from math import log,exp
+from math import log,exp,sqrt
+from scipy import optimize, special,interpolate
+from joblib import Parallel, delayed
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -18,6 +22,7 @@ class VarIndexHurst:
             TypeError("VarIndexHurst error: H_list is not of expected type, list")
         All_lists = [H_list, alpha_list,lambdasquare_list, T_list, sigma_list]
         dimension = len(H_list)
+        #print("All_lists = ",All_lists)
         if any(len(item) != dimension for item in All_lists) :
             TypeError("VarIndexHurst error: all list's size should be equal to dimension")
         else:
@@ -34,27 +39,63 @@ class VarIndexHurst:
             self.nu_inf_square = min(self.nus_square_list)
             self.nu_sup_square = max(self.nus_square_list)
 
-    def ComputeHurst(self,brownian_correl_method = 'Brownian correlates - classical'):
+    def ComputeHurst(self,brownian_correl_method = 'Brownian correlates - classical',g_i_j_matrix = None):
         if brownian_correl_method == 'Brownian correlates - classical':
-            S=0
-            for i in range(self.dimension):
-                for j in range(self.dimension):
-                    if i == j:
-                        S += self.alpha_list[i] * self.alpha_list[j] * exp(
-                            1 / 2 * (self.nus_square_list[i] * self.T ** (2 * self.H_list[i]) + self.nus_square_list[
-                                j] * self.T ** (2 * self.H_list[i])))
-                    elif i < j:
-                        S+=self.alpha_list[i]*self.alpha_list[j]*self.brownian_correlations[(i,j)]*exp(1/2*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[j]*self.T**(2*self.H_list[i])))
-                    else:
-                        S += self.alpha_list[i] * self.alpha_list[j] * self.brownian_correlations[(j,i)] * exp(
-                            1 / 2 * (self.nus_square_list[i] * self.T ** (2 * self.H_list[i]) + self.nus_square_list[j] * self.T ** (
-                                    2 * self.H_list[i])))
-            # print("(2/3*self.nu_square) = ",(2/3*self.nu_square))
-            # print("log(S) = ",log(S))
-            # print("log((2/3*self.nu_square)*log(S)) = ", log((2/3*self.nu_square)*log(S)))
-            return log((2/3*self.nu_square)*log(S))/log(self.T**2)
-        else:
-            return "Not available"
+            if g_i_j_matrix != None:
+                ValueError("VarIndexHurst ComputeHurst error: g_i_j_matrix should be None")
+            else:
+                S = 0
+                for i in range(self.dimension):
+                    for j in range(self.dimension):
+                        if i == j:
+                            S += self.alpha_list[i] * self.alpha_list[j] * exp(
+                                1 / 2 * (self.nus_square_list[i] * self.T ** (2 * self.H_list[i]) +
+                                         self.nus_square_list[
+                                             j] * self.T ** (2 * self.H_list[i])))
+                        elif i < j:
+                            S += self.alpha_list[i] * self.alpha_list[j] * self.brownian_correlations[(i, j)] * exp(
+                                1 / 2 * (self.nus_square_list[i] * self.T ** (2 * self.H_list[i]) +
+                                         self.nus_square_list[j] * self.T ** (2 * self.H_list[i])))
+                        else:
+                            S += self.alpha_list[i] * self.alpha_list[j] * self.brownian_correlations[(j, i)] * exp(
+                                1 / 2 * (self.nus_square_list[i] * self.T ** (2 * self.H_list[i]) +
+                                         self.nus_square_list[j] * self.T ** (
+                                                 2 * self.H_list[i])))
+                # print("(2/3*self.nu_square) = ",(2/3*self.nu_square))
+                # print("log(S) = ",log(S))
+                # print("log((2/3*self.nu_square)*log(S)) = ", log((2/3*self.nu_square)*log(S)))
+                return log((2 / 3 * self.nu_square) * log(S)) / log(self.T ** 2)
+        if brownian_correl_method == 'General case':
+            if g_i_j_matrix == None:
+                ValueError("VarIndexHurst ComputeHurst error: g_i_j_matrix should not be None")
+            else:
+                I = lambda T, i, j: sqrt(self.lambdasquare_list[i]) * sqrt(self.lambdasquare_list[j]) * self.T ** (
+                            self.H_list[i] + self.H_list[j]) * (self.H_list[i] + self.H_list[j] + 1) / (
+                                                (self.H_list[i] + self.H_list[j]) * (
+                                                    1 - (self.H_list[i] + self.H_list[j])))
+                S = 0
+                for i in range(self.dimension):
+                    for j in range(self.dimension):
+                        if i == j:
+                            S += self.alpha_list[i] * self.alpha_list[j] * exp(
+                                1 / 2 * (self.nus_square_list[i] * self.T ** (2 * self.H_list[i]) +
+                                         self.nus_square_list[
+                                             j] * self.T ** (2 * self.H_list[i]))) * exp(I(self.T, i, j))
+                        elif i < j:
+                            S += self.alpha_list[i] * self.alpha_list[j] * self.brownian_correlations[(i, j)] * exp(
+                                1 / 2 * (self.nus_square_list[i] * self.T ** (2 * self.H_list[i]) +
+                                         self.nus_square_list[j] * self.T ** (2 * self.H_list[i]))) * exp(
+                                g_i_j_matrix[(i, j)] * I(self.T, i, j))
+                        else:
+                            S += self.alpha_list[i] * self.alpha_list[j] * self.brownian_correlations[(j, i)] * exp(
+                                1 / 2 * (self.nus_square_list[i] * self.T ** (2 * self.H_list[i]) +
+                                         self.nus_square_list[j] * self.T ** (
+                                                 2 * self.H_list[i]))) * exp(g_i_j_matrix[(j, i)] * I(self.T, j, i))
+                # print("(2/3*self.nu_square) = ", (2 / 3 * self.nu_square))
+                # print("log(S) = ", log(S))
+                # print("log((2/3*self.nu_square)*log(S)) = ", log((2 / 3 * self.nu_square) * log(S)))
+                return log((2 / 3 * self.nu_square) * log(S)) / log(self.T ** 2)
+
 
     def ComputeBounds(self,brownian_correl_method = 'Brownian correlates - classical'):
         if brownian_correl_method == 'Brownian correlates - classical':
@@ -141,14 +182,32 @@ class VarIndexHurst:
                 for i in range(self.dimension):
                     for j in range(self.dimension):
                         if i == j:
-                            double_sum += 3*self.nu_square*self.alpha_list[i] * self.alpha_list[j]/(4*log(A_d)*A_d)*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[i]*self.T**(2*self.H_list[j]))
+                            #double_sum += 3*self.nu_square*self.alpha_list[i] * self.alpha_list[j]/(4*log(A_d)*A_d)*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[i]*self.T**(2*self.H_list[j]))
+                            double_sum +=  self.nu_square * self.alpha_list[i] * self.alpha_list[j] / (
+                                        2 * A_d) * (
+                                                      self.nus_square_list[i] * self.T ** (2 * self.H_list[i]) +
+                                                      self.nus_square_list[i] * self.T ** (2 * self.H_list[j]))
 
                         elif i < j:
-                            double_sum += 3*self.nu_square*self.alpha_list[i] * self.alpha_list[j] * self.brownian_correlations[(i, j)]/(4*log(A_d)*A_d)*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[i]*self.T**(2*self.H_list[j]))
+                            #double_sum += 3*self.nu_square*self.alpha_list[i] * self.alpha_list[j] * self.brownian_correlations[(i, j)]/(4*log(A_d)*A_d)*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[i]*self.T**(2*self.H_list[j]))
+                            double_sum +=  self.nu_square * self.alpha_list[i] * self.alpha_list[j] * \
+                                          self.brownian_correlations[(i, j)] / (2 * A_d) * (
+                                                      self.nus_square_list[i] * self.T ** (2 * self.H_list[i]) +
+                                                      self.nus_square_list[i] * self.T ** (2 * self.H_list[j]))
+
                         else:
-                            double_sum +=  3*self.nu_square*self.alpha_list[i] * self.alpha_list[j] * self.brownian_correlations[(j, i)]/(4*log(A_d)*A_d)*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[i]*self.T**(2*self.H_list[j]))
-                print("log(A_d) = ",log(A_d))
-                return(1/log(self.T**2))*(log(2/(3*self.nu_square)*log(A_d))+double_sum)
+                            #double_sum +=  3*self.nu_square*self.alpha_list[i] * self.alpha_list[j] * self.brownian_correlations[(j, i)]/(4*log(A_d)*A_d)*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[i]*self.T**(2*self.H_list[j]))
+                            double_sum +=  self.nu_square * self.alpha_list[i] * self.alpha_list[j] * \
+                                          self.brownian_correlations[(j, i)] / (2 * A_d) * (
+                                                      self.nus_square_list[i] * self.T ** (2 * self.H_list[i]) +
+                                                      self.nus_square_list[i] * self.T ** (2 * self.H_list[j]))
+                # print("log(A_d) = ",log(A_d))
+                # print("A_d = ", A_d)
+                # print("log(A_d) + double_sum = ",log(A_d) + double_sum)
+                # print('double_sum = ',double_sum)
+                #return(1/log(self.T**2))*(log(2/(3*self.nu_square)*log(A_d))+double_sum)
+                return (1 / log(self.T ** 2)) * log(2 / (3 * self.nu_square) * (log(A_d) + double_sum))
+
 
     def ComputeEvolution(self,evolution_type,with_asymptotics,hurst_arguments,brownian_correl_method = 'Brownian correlates - classical'):
         if type(hurst_arguments) != dict:
@@ -162,7 +221,7 @@ class VarIndexHurst:
                 if with_asymptotics == True:
                     asymptotic_T_hurst = [VarIndexHurst(hurst_arguments['correl_lists'][i],hurst_arguments['H_lists'][i],hurst_arguments['alpha_lists'][i],hurst_arguments['lambda_square_lists'][i],hurst_arguments['T_lists'][i],hurst_arguments['sigma_lists'][i]).ComputeFirstOrderApproximations(brownian_correl_method,"T infty") for i in range(length)]
                     plt.plot(Ts, hursts, label='Hurst index')
-                    plt.plot(Ts, asymptotic_T_hurst, label='Asymptotic hurst')
+                    plt.plot(Ts, asymptotic_T_hurst, label=r'Asymptotic hurst when $T \rightarrow +\infty$')
                     plt.legend()
                     plt.title("Hurst index evolution with respect to T")
                     plt.show()
@@ -183,7 +242,7 @@ class VarIndexHurst:
                 plt.title("Hurst index evolution with bounds with respect to T")
                 plt.show()
             if evolution_type == 'Intermittencies':
-                lambdas = [np.mean(np.array(lambda_square_list)) for lambda_square_list in hurst_arguments['lambda_square_lists']]
+                lambdas = [np.sum(np.array(lambda_square_list)) for lambda_square_list in hurst_arguments['lambda_square_lists']]
                 hursts = [VarIndexHurst(hurst_arguments['correl_lists'][i], hurst_arguments['H_lists'][i],
                                         hurst_arguments['alpha_lists'][i],
                                         hurst_arguments['lambda_square_lists'][i], hurst_arguments['T_lists'][i],
@@ -197,8 +256,10 @@ class VarIndexHurst:
                                       hurst_arguments['T_lists'][i],
                                       hurst_arguments['sigma_lists'][i]).ComputeFirstOrderApproximations(
                             brownian_correl_method, "Small intermittencies") for i in range(length)]
+                    # plt.plot(lambdas, np.exp(log(self.T**2)*np.array(hursts)), label='Hurst index')
+                    # plt.plot(lambdas, np.exp(log(self.T**2)*np.array(asymptotic_T_hurst)), label=r'Asymptotic hurst when $\hat{\lambda} \rightarrow 0$')
                     plt.plot(lambdas, hursts, label='Hurst index')
-                    plt.plot(lambdas, asymptotic_T_hurst, label='Asymptotic hurst')
+                    plt.plot(lambdas, asymptotic_T_hurst,label=r'Asymptotic hurst when $\hat{\lambda} \rightarrow 0$')
                     plt.legend()
                     plt.title("Hurst index evolution with respect to intermittencies")
                     plt.show()
@@ -207,3 +268,100 @@ class VarIndexHurst:
                     plt.legend()
                     plt.title("Hurst index evolution with respect to intermittencies")
                     plt.show()
+
+    def ComputeCrossMRMCovCurvature(self,Delta,i,j,size=4096,subsample=8, M=32,h=1e-3):
+        def kappa(Delta):
+            logSfbm_i, logSfbm_j = Sfbm(self.H_list[i], self.lambdasquare_list[i], self.T, self.sigma_list[i]), Sfbm(
+                self.H_list[j], self.lambdasquare_list[j], self.T, self.sigma_list[j])
+            # sample = logSfbm_i.GenerateSfbm(size=10)[1]
+            # print("mean sample = ", np.mean(sample),sample,len(sample))
+            shifted_MRM_sample_i_0 = logSfbm_i.Generate_sample(0, Delta,size, size, subsample, M,'ShiftedMRM')
+            shifted_MRM_sample_j_0 = logSfbm_j.Generate_sample(0, Delta,size, size, subsample, M,'ShiftedMRM')
+            # print("self.T = ",self.T)
+            # print("mean d = ", np.mean(shifted_MRM_sample_i_0),shifted_MRM_sample_i_0,len(shifted_MRM_sample_i_0))
+            # print('***********************')
+
+            return np.cov(shifted_MRM_sample_i_0, shifted_MRM_sample_j_0)[0,1]
+        kappa_Delta_plus_h,kappa_Delta_minus_h,kappa_Delta = kappa(Delta+h) ,kappa(Delta-h) ,kappa(Delta)
+        #print("kappa(Delta+h) = ",(kappa_Delta_plus_h+kappa_Delta_minus_h-2*kappa_Delta),kappa_Delta_plus_h,kappa_Delta_minus_h,2*kappa_Delta)
+        curvature_ij = (kappa_Delta_plus_h+kappa_Delta_minus_h-2*kappa_Delta)/h**2
+        return curvature_ij
+
+    def ComputeSmoothCrossCov(self,delta,i,j,size=4096,type_cov="MRMCovCurvature_normalized",subsample=8, M=32,h=1e-7):
+        if type_cov=="MRMCovCurvature_normalized":
+            Delta_range = np.linspace(2, 100, 500)
+            #curvatures = [self.ComputeCrossMRMCovCurvature(Delta, i, j, size, subsample, M, h) for Delta in Delta_range]
+            curvatures = Parallel(n_jobs=20)(delayed(self.ComputeCrossMRMCovCurvature)(Delta, i, j, size, subsample, M, h) for Delta in Delta_range)
+            #print("curvatures = ", curvatures)
+            # coefficients = np.polynomial.hermite.hermfit(Delta_range, curvatures, 3)
+            # return np.sum([coefficients[i] * special.hermite(i, monic=True)(delta) for i in range(len(coefficients))])
+            tck = interpolate.splrep(Delta_range, curvatures)
+            #return interpolate.CubicHermiteSpline(delta,Delta_range, curvatures)#*exp(-0.5*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[j]*self.T**(2*self.H_list[j])))
+            return interpolate.splev(delta, tck)*exp(-0.5*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[j]*self.T**(2*self.H_list[j])))
+        if type_cov=="MRWCov":
+            def covMRW(t):
+                logSfbm_i, logSfbm_j = Sfbm(self.H_list[i], self.lambdasquare_list[i], self.T,
+                                            self.sigma_list[i]), Sfbm(
+                    self.H_list[j], self.lambdasquare_list[j], self.T, self.sigma_list[j])
+                shifted_MRW_sample_i_t = logSfbm_i.Generate_sample(t, 0,size*M, size, subsample, M, 'MRW sample')
+                shifted_MRW_sample_j_t = logSfbm_j.Generate_sample(t, 0,size*M, size, subsample, M, 'MRW sample')
+                return np.cov(shifted_MRW_sample_i_t, shifted_MRW_sample_j_t)[0, 1]
+            covs = [covMRW(t) for t in range(0,500,20)]
+            import matplotlib.pyplot as plt
+            plt.plot(covs)
+            plt.show()
+            print("covs = ",covs)
+            return covMRW(delta)
+
+
+    def g_i_j_Calibration(self,Delta,i,j,size=4096,subsample=8, M=32,h=1e-7,method = 'root finding'):
+        if method == 'root finding':
+            # I_T00 = sqrt(self.lambdasquare_list[i] * self.lambdasquare_list[j]) * self.T ** (
+            #         self.H_list[i] + self.H_list[j]) * (self.H_list[i] + self.H_list[j] + 1) / (
+            #                 (self.H_list[i] + self.H_list[j]) * (
+            #                 1 - (self.H_list[i] + self.H_list[j])))
+            # I_T0Delta = sqrt(self.lambdasquare_list[i] * self.lambdasquare_list[j]) * ((self.T ** (
+            #             self.H_list[i] + self.H_list[j] - 1) * (self.T - Delta) - Delta ** (self.H_list[i] +
+            #                                                                                 self.H_list[j])) / (
+            #                                                                                    (self.H_list[i] +
+            #                                                                                     self.H_list[j]) * (
+            #                                                                                            1 - (self.H_list[
+            #                                                                                                     i] +
+            #                                                                                                 self.H_list[
+            #                                                                                                     j]))) - (
+            #                                                                                        (
+            #                                                                                                    self.T - Delta) * self.T ** (
+            #                                                                                                self.H_list[
+            #                                                                                                    i] +
+            #                                                                                                self.H_list[
+            #                                                                                                    j] - 1)) / (
+            #                                                                                        self.H_list[i] +
+            #                                                                                        self.H_list[j] - 1))
+            # der_xI_T00 = sqrt(self.lambdasquare_list[i]) * sqrt(self.lambdasquare_list[j]) * self.T ** (
+            #         self.H_list[i] + self.H_list[j] - 1) * (self.H_list[i] + self.H_list[j] + 1) / (
+            #                      (self.H_list[i] + self.H_list[j]) * (
+            #                      1 - (self.H_list[i] + self.H_list[j])))
+            # der_yI_T0Delta = sqrt(self.lambdasquare_list[i] * self.lambdasquare_list[j]) * (
+            #             (Delta ** (self.H_list[i] + self.H_list[j] - 1)) / (
+            #                 1 - (self.H_list[i] + self.H_list[j])) - self.T ** (self.H_list[i] + self.H_list[j] - 1) / (
+            #                         self.H_list[i] + self.H_list[j] - 1))
+            # print("check g_ij= ",-self.ComputeSmoothCrossCov(Delta,i,j,size,"MRMCovCurvature_normalized",subsample, M,h)/2)
+            # equation = lambda x: abs(x * (Delta * (der_yI_T0Delta * exp(x * I_T0Delta) - der_xI_T00 * exp(
+            #     x * I_T00)) - 2) - self.ComputeSmoothCrossCov(Delta,i,j,size,"MRMCovCurvature_normalized",subsample, M,h))**2
+            # print(equation(0))
+            # print("bef newton = ")
+            #return ('g_ij,minumum,maxiter reached, num function call)=',optimize.brent(equation, maxiter=15,full_output=True))
+            return -self.ComputeSmoothCrossCov(Delta,i,j,size,"MRMCovCurvature_normalized",subsample, M,h)/2
+        else:
+            pass
+
+
+    def g_i_j_MatrixCalibration(self,Delta):
+        g_ij_matrix = {}
+        for i in range(self.dimension):
+            for j in range(i+1,self.dimension):
+                g_ij_matrix[(i,j)]=self.g_i_j_Calibration(Delta,i,j)
+        return g_ij_matrix
+
+
+

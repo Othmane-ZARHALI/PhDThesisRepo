@@ -42,11 +42,14 @@ class GaussianProcess:
             # zero padding
             if m + 1 - len(self.covariance_matrix)>0:
                 covariance = np.concatenate([self.covariance_matrix, np.zeros(m + 1 - len(self.covariance_matrix))])
-            #thecorr = np.concatenate([covariance, np.flip(covariance[1:-1])])
-            thecorr = np.concatenate([covariance, np.flip(covariance)])
-            fftcorr = np.real(np.fft.fft(thecorr))
             u = np.random.normal(size=M)
             v = np.random.normal(size=M) * 1j
+
+            thecorr = np.concatenate([covariance, np.flip(covariance)])
+            if len(u) == len(thecorr)-2:
+                thecorr = np.concatenate([covariance, np.flip(covariance[1:-1])])
+            fftcorr = np.real(np.fft.fft(thecorr))
+
             fftcorr = np.sqrt(fftcorr + 0j) * (u + v) / np.sqrt(2)
             corr = np.real(np.fft.ifft(fftcorr))
             return corr[:size] * np.sqrt(2 * M)
@@ -89,8 +92,11 @@ class Sfbm:
         m = -correlation_list[0]
         return m, correlation_list
 
-    def GenerateSfbm(self,size=4096, subsample=8):
-        dt = 1 / subsample
+    def GenerateSfbm(self,size=4096, subsample=8,t= None):
+        if t==None:
+            dt = 1 / subsample
+        else:
+            dt = t/(size * subsample)
         N = size - 1
         #N = size
         N = 2 ** np.ceil(np.log2(N))
@@ -102,7 +108,6 @@ class Sfbm:
         mrm = np.cumsum(self.sigma * self.sigma * np.exp(2 * om) * dt)
         mrw,mrm = mrw[::subsample],mrm[::subsample]
         #mrw = np.log(np.exp(mrw))
-
         return mrw,mrm
 
 
@@ -133,8 +138,23 @@ class Sfbm:
         zz1 = zz1 - zz1.mean()
         zz2 = np.log(mm)
         zz2 = zz2 - np.mean(zz2)
-
         return zz1.values, zz2
+
+    def Generate_sample(self,t,Delta,N_MC=100,size=4096,subsample=8, M=32,type_gen="ShiftedMRM"):
+        sample = []
+        if type_gen=="ShiftedMRM":
+            for _ in range(N_MC):
+                _, mrm = self.GenerateSfbm(size=size * M, subsample=subsample)
+                mrm = mrm[t:int(t + Delta) + 1]
+                #print("mean inside = ",np.mean(mrm),mrm)
+                dmm = np.diff(mrm)
+                dmm = np.append(dmm[0], dmm)
+                sample.append(np.cumsum(dmm)[-1])
+        if type_gen=="MRW sample":
+            for _ in range(size):
+                mrw, _ = self.GenerateSfbm(size=size * M, subsample=subsample,t=t)
+                sample.append(mrw[-1])
+        return sample
 
 
 class MultidimensionalSfbm:
