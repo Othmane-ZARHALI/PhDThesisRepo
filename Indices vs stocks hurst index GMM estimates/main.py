@@ -475,17 +475,30 @@ g_i_j_matrix={(0,1):0.06,(0,2):0.9,(1,2):0.7}
 
 #g_ij calibration
 correlationscalib={(0,1):0.9,(0,2):0.9,(1,2):0.9}
-lambdasquare_list,T_list,sigma_list = [0.07 for i in range(dimension)],[2 for i in range(dimension)],[1 for i in range(dimension)] #
-hurst_index_calibration = VarIndexHurst(correlationscalib, [0.001,0.03,0.001],alpha_list,lambdasquare_list,T_list,sigma_list)
+lambdasquare_list,T_list,sigma_list = [0.07 for i in range(dimension)],[2**10 for i in range(dimension)],[1 for i in range(dimension)] #
+hurst_index_calibration = VarIndexHurst(correlationscalib, [0.01,0.03,0.01],alpha_list,lambdasquare_list,T_list,sigma_list)  # H_i infuence g_ij
 #print(Sfbm().GenerateShiftedMRM_sample(1,5,5))
 #print(hurst_index.ComputeCrossMRMCovCurvature(5,0,1,10))
 #print(hurst_index.ComputeSmoothCrossCov(0.05,0,2,10,"MRMCovCurvature_normalized"))
 from time import time
 #t=time()
-print(hurst_index.g_i_j_Calibration(0.005,0,2,100))
+
+#print(hurst_index.g_i_j_Calibration(0.005,0,2,100))
+#print(hurst_index.g_i_j_Calibration(0.005,0,1,100))
+#print(hurst_index.g_i_j_Calibration(0.005,1,2,100))
+# g 02=-9.3384  nmc =100
+# g 01=477915246233.9002  nmc =100
+# g 12=-0.01073  nmc =100
+
 #print(time()-t)
 
-# // 36sec vs sequential 55.44 sec
+# // 36sec vs sequential 55.44 sec  nmc=10
+
+print(hurst_index_calibration.g_i_j_Calibration(0.005,0,2,1000))
+
+
+#print(hurst_index.g_i_j_Calibration(0.005,0,1,1000))
+# print(hurst_index.g_i_j_Calibration(0.005,1,2,1000))
 
 
 

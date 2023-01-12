@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from math import log,exp,sqrt
 from scipy import optimize, special,interpolate
+
 from joblib import Parallel, delayed
 
 import warnings
@@ -271,31 +272,69 @@ class VarIndexHurst:
 
     def ComputeCrossMRMCovCurvature(self,Delta,i,j,size=4096,subsample=8, M=32,h=1e-3):
         def kappa(Delta):
-            logSfbm_i, logSfbm_j = Sfbm(self.H_list[i], self.lambdasquare_list[i], self.T, self.sigma_list[i]), Sfbm(
-                self.H_list[j], self.lambdasquare_list[j], self.T, self.sigma_list[j])
+            #logSfbm_i, logSfbm_j =,
             # sample = logSfbm_i.GenerateSfbm(size=10)[1]
             # print("mean sample = ", np.mean(sample),sample,len(sample))
-            shifted_MRM_sample_i_0 = logSfbm_i.Generate_sample(0, Delta,size, size, subsample, M,'ShiftedMRM')
-            shifted_MRM_sample_j_0 = logSfbm_j.Generate_sample(0, Delta,size, size, subsample, M,'ShiftedMRM')
+
+            shifted_MRM_sample_i_0 =  Sfbm(self.H_list[i], self.lambdasquare_list[i], self.T, self.sigma_list[i]).Generate_sample(0, Delta,size, size, subsample, M,'ShiftedMRM')
+            shifted_MRM_sample_j_0 = Sfbm(self.H_list[j], self.lambdasquare_list[j], self.T, self.sigma_list[j]).Generate_sample(0, Delta,size, size, subsample, M,'ShiftedMRM')
+
+            # objects = [logSfbm_i,logSfbm_j]
+            # jobs_output = Parallel(n_jobs=2)(delayed(objects[i].Generate_sample)(0, Delta,size, size, subsample, M,'ShiftedMRM') for i in range(2))
+            # shifted_MRM_sample_i_0,shifted_MRM_sample_j_0 = jobs_output[0],jobs_output[1]
+
+            #print("jobs done ")
             # print("self.T = ",self.T)
             # print("mean d = ", np.mean(shifted_MRM_sample_i_0),shifted_MRM_sample_i_0,len(shifted_MRM_sample_i_0))
             # print('***********************')
+            # print("len(shifted_MRM_sample_i_0) = ",len(shifted_MRM_sample_i_0))
+            print("check stdev=  ",np.mean(shifted_MRM_sample_i_0) , 1/sqrt(size)*np.std(shifted_MRM_sample_i_0),"!!",np.mean(shifted_MRM_sample_j_0),1/sqrt(size)*np.std(shifted_MRM_sample_j_0))
+            print("cov check =  ",np.cov(shifted_MRM_sample_i_0, shifted_MRM_sample_j_0))
+            print('*****************************************')
 
+
+            print("check cov = ",np.mean((shifted_MRM_sample_i_0-np.mean(shifted_MRM_sample_i_0))*(shifted_MRM_sample_j_0-np.mean(shifted_MRM_sample_j_0))))
+            print("check std err= ",1/sqrt(size)*np.std((shifted_MRM_sample_i_0-np.mean(shifted_MRM_sample_i_0))*(shifted_MRM_sample_j_0-np.mean(shifted_MRM_sample_j_0))))
+            print('*****************************************')
+            # return np.mean((shifted_MRM_sample_i_0-np.mean(shifted_MRM_sample_i_0))*(shifted_MRM_sample_j_0-np.mean(shifted_MRM_sample_j_0)))
             return np.cov(shifted_MRM_sample_i_0, shifted_MRM_sample_j_0)[0,1]
-        kappa_Delta_plus_h,kappa_Delta_minus_h,kappa_Delta = kappa(Delta+h) ,kappa(Delta-h) ,kappa(Delta)
+
+
+        #kappas = [kappa(Delta) for Delta in np.linspace(2, 100, 100)]
+        # import matplotlib.pyplot as plt
+        # plt.plot(kappas)
+        # plt.title("kappa")
+        # plt.show()
+
+        #kappa_Delta_plus_h,kappa_Delta_minus_h,kappa_Delta = kappa(Delta+h) ,kappa(Delta-h) ,kappa(Delta)
         #print("kappa(Delta+h) = ",(kappa_Delta_plus_h+kappa_Delta_minus_h-2*kappa_Delta),kappa_Delta_plus_h,kappa_Delta_minus_h,2*kappa_Delta)
-        curvature_ij = (kappa_Delta_plus_h+kappa_Delta_minus_h-2*kappa_Delta)/h**2
-        return curvature_ij
+        #curvature_ij = (kappa(Delta+h)+kappa(Delta-h)-2*kappa(Delta))/h**2
+        #print("check curvature (kappa_Delta_plus_h+kappa_Delta_minus_h-2*kappa_Delta) = ",(kappa(Delta+h)+kappa(Delta-h)-2*kappa(Delta)))
+        return (kappa(Delta+h)+kappa(Delta-h)-2*kappa(Delta))/h**2
 
     def ComputeSmoothCrossCov(self,delta,i,j,size=4096,type_cov="MRMCovCurvature_normalized",subsample=8, M=32,h=1e-7):
         if type_cov=="MRMCovCurvature_normalized":
-            Delta_range = np.linspace(2, 100, 500)
+            Delta_range = np.linspace(0,2,500)
+
             #curvatures = [self.ComputeCrossMRMCovCurvature(Delta, i, j, size, subsample, M, h) for Delta in Delta_range]
-            curvatures = Parallel(n_jobs=20)(delayed(self.ComputeCrossMRMCovCurvature)(Delta, i, j, size, subsample, M, h) for Delta in Delta_range)
-            #print("curvatures = ", curvatures)
+            curvatures = Parallel(n_jobs=60)(delayed(self.ComputeCrossMRMCovCurvature)(Delta, i, j, size, subsample, M, h) for Delta in Delta_range)
+            # import matplotlib.pyplot as plt
+            # plt.plot(curvatures)
+            # plt.show()
+            # print("curvatures = ", curvatures)
             # coefficients = np.polynomial.hermite.hermfit(Delta_range, curvatures, 3)
             # return np.sum([coefficients[i] * special.hermite(i, monic=True)(delta) for i in range(len(coefficients))])
             tck = interpolate.splrep(Delta_range, curvatures)
+
+
+            # import matplotlib.pyplot as plt
+            # import QuantLib as ql
+            # i = ql.CubicNaturalSpline(list(Delta_range), list(curvatures))
+            plt.plot([interpolate.splev(delta, tck) for delta in np.linspace(0,1,1000)],color='red')
+            #plt.plot([i(x) for x in np.linspace(0,2,1000)],color='blue')
+            plt.title("check interpolation quantlib vs splev")
+            plt.show()
+            #print("interpolate.splev(delta, tck) = ",interpolate.splev(delta, tck),(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[j]*self.T**(2*self.H_list[j])))
             #return interpolate.CubicHermiteSpline(delta,Delta_range, curvatures)#*exp(-0.5*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[j]*self.T**(2*self.H_list[j])))
             return interpolate.splev(delta, tck)*exp(-0.5*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[j]*self.T**(2*self.H_list[j])))
         if type_cov=="MRWCov":
@@ -306,15 +345,15 @@ class VarIndexHurst:
                 shifted_MRW_sample_i_t = logSfbm_i.Generate_sample(t, 0,size*M, size, subsample, M, 'MRW sample')
                 shifted_MRW_sample_j_t = logSfbm_j.Generate_sample(t, 0,size*M, size, subsample, M, 'MRW sample')
                 return np.cov(shifted_MRW_sample_i_t, shifted_MRW_sample_j_t)[0, 1]
-            covs = [covMRW(t) for t in range(0,500,20)]
-            import matplotlib.pyplot as plt
-            plt.plot(covs)
-            plt.show()
-            print("covs = ",covs)
+            #covs = [covMRW(t) for t in range(0,500,20)]
+            #import matplotlib.pyplot as plt
+            # plt.plot(covs)
+            # plt.show()
+            # print("covs = ",covs)
             return covMRW(delta)
 
 
-    def g_i_j_Calibration(self,Delta,i,j,size=4096,subsample=8, M=32,h=1e-7,method = 'root finding'):
+    def g_i_j_Calibration(self,Delta,i,j,size=4096,subsample=8, M=32,h=1e-3,method = 'root finding'):
         if method == 'root finding':
             # I_T00 = sqrt(self.lambdasquare_list[i] * self.lambdasquare_list[j]) * self.T ** (
             #         self.H_list[i] + self.H_list[j]) * (self.H_list[i] + self.H_list[j] + 1) / (
@@ -359,7 +398,7 @@ class VarIndexHurst:
     def g_i_j_MatrixCalibration(self,Delta):
         g_ij_matrix = {}
         for i in range(self.dimension):
-            for j in range(i+1,self.dimension):
+            for j in range(i,self.dimension):
                 g_ij_matrix[(i,j)]=self.g_i_j_Calibration(Delta,i,j)
         return g_ij_matrix
 

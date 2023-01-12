@@ -4,8 +4,10 @@
 # Author : Jean-Francois MUZY, Othmane ZARHALI
 
 # Importations
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+#from numba import njit
 
 
 def make_basis_vector(size, index):
@@ -140,20 +142,30 @@ class Sfbm:
         zz2 = zz2 - np.mean(zz2)
         return zz1.values, zz2
 
+    #@njit
     def Generate_sample(self,t,Delta,N_MC=100,size=4096,subsample=8, M=32,type_gen="ShiftedMRM"):
         sample = []
         if type_gen=="ShiftedMRM":
             for _ in range(N_MC):
-                _, mrm = self.GenerateSfbm(size=size * M, subsample=subsample)
-                mrm = mrm[t:int(t + Delta) + 1]
-                #print("mean inside = ",np.mean(mrm),mrm)
-                dmm = np.diff(mrm)
-                dmm = np.append(dmm[0], dmm)
-                sample.append(np.cumsum(dmm)[-1])
+                # plt.plot(np.log(self.GenerateSfbm(size=size * M, subsample=subsample)[1]))
+                # plt.show()
+                #
+                # path = self.GenerateSfbm(size=size * M, subsample=subsample)[1][t:int(t + Delta) + 1]
+                # print(path)
+                # print('////////////////////////')
+                # #dmm = np.diff(self.GenerateSfbm(size=size * M, subsample=subsample)[1][t:int(t + Delta) + 1])
+                # dmm = np.diff(path)
+
+                # dmm = np.append(dmm[0], dmm)
+                #logvol = self.GeneratelogVol(size, subsample, M)[1]
+                # plt.plot(logvol)
+                # plt.show()
+                #mrm =
+                #sample.append(np.cumsum(dmm)[-1])
+                sample.append(np.cumsum(np.exp(self.GeneratelogVol(size, subsample, M)[1])[t:int(t + Delta) + 1])[-1])
         if type_gen=="MRW sample":
             for _ in range(size):
-                mrw, _ = self.GenerateSfbm(size=size * M, subsample=subsample,t=t)
-                sample.append(mrw[-1])
+                sample.append(self.GenerateSfbm(size=size * M, subsample=subsample,t=t)[0][-1])
         return sample
 
 
