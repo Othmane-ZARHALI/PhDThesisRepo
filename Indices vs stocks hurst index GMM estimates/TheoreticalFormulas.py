@@ -114,6 +114,8 @@ class VarIndexHurst:
                     else:
                         A_d += self.alpha_list[i] * self.alpha_list[j] * self.brownian_correlations[(j, i)]
             if check_positivity == False:
+                print("log(A_d) = ", log(A_d))
+                print("A_d = ", A_d)
                 return {'Lowerbound': (1 / log(self.T ** 2)) * log(
                     2 / (3 * self.nu_inf_square) * log(A_d) + (2 * self.nu_inf_square) / (3 * self.nu_sup_square)),
                         'Upperbound': (1 / log(self.T ** 2)) * log(
@@ -202,13 +204,14 @@ class VarIndexHurst:
                                           self.brownian_correlations[(j, i)] / (2 * A_d) * (
                                                       self.nus_square_list[i] * self.T ** (2 * self.H_list[i]) +
                                                       self.nus_square_list[i] * self.T ** (2 * self.H_list[j]))
-                # print("log(A_d) = ",log(A_d))
-                # print("A_d = ", A_d)
-                # print("log(A_d) + double_sum = ",log(A_d) + double_sum)
-                # print('double_sum = ',double_sum)
+                print("log(A_d) = ",log(A_d))
+                print("A_d = ", A_d)
+                print("log(A_d) + double_sum = ",log(A_d) + double_sum)
+                print('double_sum = ',double_sum)
                 #return(1/log(self.T**2))*(log(2/(3*self.nu_square)*log(A_d))+double_sum)
                 return (1 / log(self.T ** 2)) * log(2 / (3 * self.nu_square) * (log(A_d) + double_sum))
-
+        else:
+            return "not available"
 
     def ComputeEvolution(self,evolution_type,with_asymptotics,hurst_arguments,brownian_correl_method = 'Brownian correlates - classical'):
         if type(hurst_arguments) != dict:
@@ -330,10 +333,10 @@ class VarIndexHurst:
             # import matplotlib.pyplot as plt
             # import QuantLib as ql
             # i = ql.CubicNaturalSpline(list(Delta_range), list(curvatures))
-            plt.plot([interpolate.splev(delta, tck) for delta in np.linspace(0,1,1000)],color='red')
-            #plt.plot([i(x) for x in np.linspace(0,2,1000)],color='blue')
-            plt.title("check interpolation quantlib vs splev")
-            plt.show()
+            # plt.plot([interpolate.splev(delta, tck) for delta in np.linspace(0,1,1000)],color='red')
+            # #plt.plot([i(x) for x in np.linspace(0,2,1000)],color='blue')
+            # plt.title("check interpolation quantlib vs splev")
+            # plt.show()
             #print("interpolate.splev(delta, tck) = ",interpolate.splev(delta, tck),(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[j]*self.T**(2*self.H_list[j])))
             #return interpolate.CubicHermiteSpline(delta,Delta_range, curvatures)#*exp(-0.5*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[j]*self.T**(2*self.H_list[j])))
             return interpolate.splev(delta, tck)*exp(-0.5*(self.nus_square_list[i]*self.T**(2*self.H_list[i])+self.nus_square_list[j]*self.T**(2*self.H_list[j])))

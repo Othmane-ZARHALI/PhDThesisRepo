@@ -452,18 +452,18 @@ g_i_j_matrix={(0,1):0.06,(0,2):0.9,(1,2):0.7}
 # the intermittencies play an important role in hurst valuation
 
 #plot wrt T
-# Number_indices = 100
-# Multiple_Hs=[H_list for i in range(Number_indices)]
-# Multiple_lambdasquare_list=[lambdasquare_list for i in range(Number_indices)]
-# T_values = np.linspace(50,2**50,Number_indices)
-# Multiple_T_list=[[T_value for i in range(3)] for T_value in T_values]
-# Multiple_sigma_list=[sigma_list for i in range(Number_indices)]
-# Multiple_alphas = [alpha_list for i in range(Number_indices)]
-# Multiple_correlations = [correlations3 for i in range(Number_indices)]
-#
-# arguments = {'T_lists':Multiple_T_list,'correl_lists':Multiple_correlations,'alpha_lists':Multiple_alphas,'H_lists':Multiple_Hs,'lambda_square_lists':Multiple_lambdasquare_list,'sigma_lists':Multiple_sigma_list}
-# hurst_index.ComputeEvolution('T without bounds',True,arguments)
-# hurst_index.ComputeEvolution('T with bounds',True,arguments)
+Number_indices = 100
+Multiple_Hs=[H_list for i in range(Number_indices)]
+Multiple_lambdasquare_list=[lambdasquare_list for i in range(Number_indices)]
+T_values = np.linspace(50,2**50,Number_indices)
+Multiple_T_list=[[T_value for i in range(3)] for T_value in T_values]
+Multiple_sigma_list=[sigma_list for i in range(Number_indices)]
+Multiple_alphas = [alpha_list for i in range(Number_indices)]
+Multiple_correlations = [correlations3 for i in range(Number_indices)]
+
+arguments = {'T_lists':Multiple_T_list,'correl_lists':Multiple_correlations,'alpha_lists':Multiple_alphas,'H_lists':Multiple_Hs,'lambda_square_lists':Multiple_lambdasquare_list,'sigma_lists':Multiple_sigma_list}
+#hurst_index.ComputeEvolution('T without bounds',True,arguments)
+hurst_index.ComputeEvolution('T with bounds',True,arguments)
 
 #plot wrt lambda2
 # Number_indices_lambda = 50
@@ -494,7 +494,7 @@ from time import time
 
 # // 36sec vs sequential 55.44 sec  nmc=10
 
-print(hurst_index_calibration.g_i_j_Calibration(0.005,0,2,1000))
+#print(hurst_index_calibration.g_i_j_Calibration(0.005,0,2,10))
 
 
 #print(hurst_index.g_i_j_Calibration(0.005,0,1,1000))
