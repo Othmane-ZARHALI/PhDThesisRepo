@@ -433,7 +433,7 @@ from TheoreticalFormulas import *
 dimension = 3
 correlations = {(0,1):-0.06,(0,2):0.9,(0,3):0.4,(0,4):0.02,(1,2):-0.7,(1,3):0.41,(1,4):-0.91,(2,3):-0.1,(2,4):-0.1,(3,4):0.95}
 correlations3={(0,1):0.06,(0,2):0.9,(1,2):0.7}
-lambdasquare_list,T_list,sigma_list = [0.02 for i in range(dimension)],[2**100 for i in range(dimension)],[1 for i in range(dimension)] #
+lambdasquare_list,T_list,sigma_list = [0.1 for i in range(dimension)],[2**100 for i in range(dimension)],[1 for i in range(dimension)] #
 h_threashold =  1 / log((2**(11.5)) **2)
 H_list = [0.01,0.02,0.03]
 #H_list = [h_threashold,h_threashold,h_threashold]
@@ -455,7 +455,7 @@ g_i_j_matrix={(0,1):0.06,(0,2):0.9,(1,2):0.7}
 Number_indices = 100
 Multiple_Hs=[H_list for i in range(Number_indices)]
 Multiple_lambdasquare_list=[lambdasquare_list for i in range(Number_indices)]
-T_values = np.linspace(50,2**50,Number_indices)
+T_values = np.linspace(50,200,Number_indices) #2**50
 Multiple_T_list=[[T_value for i in range(3)] for T_value in T_values]
 Multiple_sigma_list=[sigma_list for i in range(Number_indices)]
 Multiple_alphas = [alpha_list for i in range(Number_indices)]
@@ -463,7 +463,7 @@ Multiple_correlations = [correlations3 for i in range(Number_indices)]
 
 arguments = {'T_lists':Multiple_T_list,'correl_lists':Multiple_correlations,'alpha_lists':Multiple_alphas,'H_lists':Multiple_Hs,'lambda_square_lists':Multiple_lambdasquare_list,'sigma_lists':Multiple_sigma_list}
 #hurst_index.ComputeEvolution('T without bounds',True,arguments)
-hurst_index.ComputeEvolution('T with bounds',True,arguments)
+# hurst_index.ComputeEvolution('T with bounds',True,arguments)
 
 #plot wrt lambda2
 # Number_indices_lambda = 50
@@ -493,12 +493,15 @@ from time import time
 #print(time()-t)
 
 # // 36sec vs sequential 55.44 sec  nmc=10
+#t=time()
+#print(hurst_index.ComputeCrossMRMCovCurvature(0.005,0,1,100))
+# print("time = ",time()-t) # 345 MC
 
-#print(hurst_index_calibration.g_i_j_Calibration(0.005,0,2,10))
+#print(hurst_index_calibration.g_i_j_Calibration(0.005,0,1,100))
 
 
 #print(hurst_index.g_i_j_Calibration(0.005,0,1,1000))
 # print(hurst_index.g_i_j_Calibration(0.005,1,2,1000))
 
 
-
+print("check log hurst = ",VarIndexHurst({(0,1):0,(0,2):0,(1,2):0}, [0.02,0.04,0.0001],[0.9,0.05,0.05],[0.01,0.0001,0.00081],[2 for i in range(dimension)],sigma_list).ComputeHurst_log_small_intermittencies("root finding"))

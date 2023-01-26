@@ -113,12 +113,12 @@ class Sfbm:
         return mrw,mrm
 
 
-    def GeneratelogVol(self,size=4096, subsample=8, M=32):
+    def GeneratelogVol(self,size=4096, subsample=8, M=32,t=None):
         factor = 1
         if self.H > 0:
             factor = M ** (-2 * self.H) / 4
         self.lambdasquareintermittency *=  factor
-        mrw, mrm = self.GenerateSfbm(size=size * M,subsample=subsample)
+        mrw, mrm = self.GenerateSfbm(size=size * M,subsample=subsample,t=t)
         self.lambdasquareintermittency /= factor
         dvv = np.diff(np.array(mrw))
         dvv = np.append(dvv[0], dvv)
@@ -162,7 +162,8 @@ class Sfbm:
                 # plt.show()
                 #mrm =
                 #sample.append(np.cumsum(dmm)[-1])
-                sample.append(np.cumsum(np.exp(self.GeneratelogVol(size, subsample, M)[1])[t:int(t + Delta) + 1])[-1])
+                #sample.append(np.cumsum(np.exp(self.GeneratelogVol(size, subsample, M)[1])[t:int(t + Delta) + 1])[-1])
+                sample.append(np.cumsum(np.exp(self.GeneratelogVol(size, subsample, M,Delta)[1]))[-1])
         if type_gen=="MRW sample":
             for _ in range(size):
                 sample.append(self.GenerateSfbm(size=size * M, subsample=subsample,t=t)[0][-1])
