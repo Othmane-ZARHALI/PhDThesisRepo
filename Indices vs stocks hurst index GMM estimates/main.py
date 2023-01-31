@@ -6,6 +6,7 @@
 
 # Importations
 import matplotlib.pyplot as plt
+import numpy as np
 
 from DataAcquisition import *
 from LogSfbmModel import *
@@ -504,4 +505,21 @@ from time import time
 # print(hurst_index.g_i_j_Calibration(0.005,1,2,1000))
 
 
-print("check log hurst = ",VarIndexHurst({(0,1):0,(0,2):0,(1,2):0}, [0.02,0.04,0.0001],[0.9,0.05,0.05],[0.01,0.0001,0.00081],[2 for i in range(dimension)],sigma_list).ComputeHurst_log_small_intermittencies("root finding"))
+
+# print("log hurst = ",VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},[0.01,0.041,0.05],[0.4,0.4,0.2],0.0001*np.ones(3),[2**10 for i in range(dimension)],sigma_list).ComputeHurst_log_small_intermittencies("root finding"))
+ # intermittencies play important role as well as H_is (but the major part is from intermittencies)
+
+Hvalues = np.linspace(1e-3,0.16,20) #.15
+plt.plot(Hvalues,[VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},h*np.ones(3),0.3*np.ones(3),0.0001*np.ones(3),[2**10 for i in range(dimension)],sigma_list).ComputeHurst_log_small_intermittencies("root finding") for h in Hvalues])
+plt.xlabel('H')
+plt.ylabel('$H^{log}_{X}$')
+plt.title(r'$H^{log}_{X}$ evolution - constant hurst stocks')
+plt.show()
+
+
+
+
+
+
+
+
