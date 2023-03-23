@@ -46,14 +46,15 @@ realized_vol_data_obj_yf.IndicesCharging("AAPL",first_date="1900-01-01",last_dat
 # removed0signal_test = realized_vol_data_obj_yf.removeZeros(signal_test)
 log_vol_estimator = realized_vol_data_obj_yf.ComputeLogVolEstimator()
 # CompleteData_withlogvol = realized_vol_data_obj_yf.GetCompleteData_withlogvol(symlist_SP)
-# correlation_matrix_test = realized_vol_data_obj_yf.ComputeCovarianceMatrixLogvol(symlist_SP)[0]
+correlation_matrix_test = realized_vol_data_obj_yf.ComputeCovarianceMatrixLogvol(symlist_SP)[0]
 # logvol_synthesis_yf = realized_vol_data_obj_yf.LogVolSynthesisOverAssets(["GOOGL","AAPL","AMZN"])
 
 
 #    S FBM MODEL #######################################################################################################
 # gaussian_process_test = GaussianProcess('LastWave',correlation_matrix_test[0])
+# gaussian_process_test = GaussianProcess('LastWaveFFT',np.array([[0,1,2],[5,4,7],[0,1,2]]))
 # generated_gaussian_process = gaussian_process_test.Generate(10)
-#
+# print("generated_gaussian_process = ",generated_gaussian_process)
 # S_fbm_model = Sfbm()
 # Sfbmcorrelation = S_fbm_model.SfbmCorrelation(10,200)
 # S_fbm_model_generation_example = S_fbm_model.GenerateSfbm(10)
@@ -108,9 +109,9 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 # MultidimS_fbm_model = MultidimensionalSfbm([Sfbm(H=0.03), Sfbm(H=0.03)])
 # S_fbm_model_mutlidimensionalgeneration_example = MultidimS_fbm_model.GenerateMultidimensionalSfbm(4000)
 # # print(S_fbm_model_mutlidimensionalgeneration_example)
-# index_builder = MultidimS_fbm_model.Index_Builder([0.5, 0.5], S_fbm_model_mutlidimensionalgeneration_example,
-#                                                   'mrm and mrw')
+# index_builder = MultidimS_fbm_model.Index_Builder([0.5, 0.5], S_fbm_model_mutlidimensionalgeneration_example,'mrm and mrw')
 # log_vol_index_generation_direct = MultidimS_fbm_model.GeneratelogVolMultidimSfbm_Index([0.5, 0.5], 'direct', 4000)
+# print("log_vol_index_generation_direct = ",log_vol_index_generation_direct)
 #
 # GMM_index = GMM()
 # index_estimatedGMM_param = GMM_index.ComputeParamsGMM(log_vol_index_generation_direct)
@@ -310,7 +311,7 @@ scaling_haar = GMM_obj.ScalingHaar(log_vol_estimator)
 # #correlations = {(0,1):0,(0,2):0,(1,2):0}
 # correlations = {(0,1):-0.06368572,(0,2):0.9,(1,2):-0.13849021}  # => H ~ 0.33
 # #correlations = {(0,1):0.2,(0,2):0.85,(1,2):0.01}
-# #
+# # #
 # MultidimensionalSfbms_generalmodel = MultidimensionalSfbm(Sfbms, correlations,dimension,Hs,lambdasquare_list,T_list,sigma_list )
 # log_vol_index_generation_generalmodel_Sfbms = MultidimensionalSfbms_generalmodel.GeneratelogVolMultidimSfbm_Index(weights,'quadratic variation estimate',4000,'mrw',8,32,'Brownian correlates - random correl matrix')
 # print("log_vol_index_generation_generalmodel_Sfbms = ",log_vol_index_generation_generalmodel_Sfbms)
@@ -446,15 +447,15 @@ hurst_index = VarIndexHurst(correlations3,H_list,alpha_list,lambdasquare_list,T_
 # print("asympt T infty Hurst = ",hurst_index.ComputeFirstOrderApproximations())
 #print("asympt small interm Hurst = ",hurst_index.ComputeFirstOrderApproximations('Brownian correlates - classical','Small intermittencies'))
 
-g_i_j_matrix={(0,1):0.06,(0,2):0.9,(1,2):0.7}
-#print("hurst_index _ general case model = ",hurst_index.ComputeHurst('General case',g_i_j_matrix))
+
+#print("hurst_index _ general case model = ",hurst_index.ComputeHurst('General case'))
 
 
 # the intermittencies play an important role in hurst valuation
 
 #plot wrt T
 Number_indices = 100
-Multiple_Hs=[H_list for i in range(Number_indices)]
+Multiple_Hs=[[0.01,0.02,0.03] for i in range(Number_indices)]
 Multiple_lambdasquare_list=[lambdasquare_list for i in range(Number_indices)]
 T_values = np.linspace(50,200,Number_indices) #2**50
 Multiple_T_list=[[T_value for i in range(3)] for T_value in T_values]
@@ -474,52 +475,69 @@ arguments = {'T_lists':Multiple_T_list,'correl_lists':Multiple_correlations,'alp
 # arguments_lambda = {'T_lists':Multiple_T_fixed_list,'correl_lists':Multiple_correlations,'alpha_lists':Multiple_alphas,'H_lists':Multiple_Hs,'lambda_square_lists':Multiple_lambda_values,'sigma_lists':Multiple_sigma_list}
 # hurst_index.ComputeEvolution('Intermittencies',True,arguments_lambda)
 
-#g_ij calibration
+
+
+
 correlationscalib={(0,1):0.9,(0,2):0.9,(1,2):0.9}
 lambdasquare_list,T_list,sigma_list = [0.07 for i in range(dimension)],[2**10 for i in range(dimension)],[1 for i in range(dimension)] #
 hurst_index_calibration = VarIndexHurst(correlationscalib, [0.01,0.03,0.01],alpha_list,lambdasquare_list,T_list,sigma_list)  # H_i infuence g_ij
-#print(Sfbm().GenerateShiftedMRM_sample(1,5,5))
-#print(hurst_index.ComputeCrossMRMCovCurvature(5,0,1,10))
-#print(hurst_index.ComputeSmoothCrossCov(0.05,0,2,10,"MRMCovCurvature_normalized"))
-from time import time
-#t=time()
 
-#print(hurst_index.g_i_j_Calibration(0.005,0,2,100))
-#print(hurst_index.g_i_j_Calibration(0.005,0,1,100))
-#print(hurst_index.g_i_j_Calibration(0.005,1,2,100))
-# g 02=-9.3384  nmc =100
-# g 01=477915246233.9002  nmc =100
-# g 12=-0.01073  nmc =100
-
-#print(time()-t)
-
-# // 36sec vs sequential 55.44 sec  nmc=10
-#t=time()
-#print(hurst_index.ComputeCrossMRMCovCurvature(0.005,0,1,100))
-# print("time = ",time()-t) # 345 MC
-
-#print(hurst_index_calibration.g_i_j_Calibration(0.005,0,1,100))
-
-
-#print(hurst_index.g_i_j_Calibration(0.005,0,1,1000))
-# print(hurst_index.g_i_j_Calibration(0.005,1,2,1000))
 
 
 
 # print("log hurst = ",VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},[0.01,0.041,0.05],[0.4,0.4,0.2],0.0001*np.ones(3),[2**10 for i in range(dimension)],sigma_list).ComputeHurst_log_small_intermittencies("root finding"))
  # intermittencies play important role as well as H_is (but the major part is from intermittencies)
 
+
+#print("check small interm var Hurst = ",VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},0.0001*np.ones(3),[0.3,0.2,0.5],0.001*np.ones(3),[2**14 for _ in range(dimension)],sigma_list).ComputeFirstOrderApproximations( 'General case', "Small intermittencies"))
+
+# print("check var Hurst = ",VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},0.00001*np.ones(3),[0.3,0.2,0.5],0.0001*np.ones(3),[2**14 for _ in range(dimension)],sigma_list).ComputeHurst('Brownian correlates - classical'))
+# print("check var Hurst = ",VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},[0.01,0.02,0.03],[0.3,0.2,0.5],0.005*np.ones(3),[2**20 for _ in range(dimension)],sigma_list).ComputeHurst('General case'))
+# print(VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},[0.01,0.02,0.03],[0.3,0.2,0.5],0.0005*np.ones(3),[2**20 for _ in range(dimension)],sigma_list).ComputeHurst_log_small_intermittencies("root finding"))
+# print("comp hurst log = ",VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},[0.01,0.02,0.03],[0.3,0.2,0.5],0.005*np.ones(3),[2**10 for i in range(dimension)],sigma_list).ComputeHurst_log_small_intermittencies("root finding"))
+
+
+
+
+
+
 Hvalues = np.linspace(1e-3,0.16,20) #.15
-plt.plot(Hvalues,[VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},h*np.ones(3),0.3*np.ones(3),0.0001*np.ones(3),[2**10 for i in range(dimension)],sigma_list).ComputeHurst_log_small_intermittencies("root finding") for h in Hvalues])
-plt.xlabel('H')
-plt.ylabel('$H^{log}_{X}$')
-plt.title(r'$H^{log}_{X}$ evolution - constant hurst stocks')
-plt.show()
+# print("check H_X",[VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},h*np.ones(3),0.3*np.ones(3),0.0001*np.ones(3),[2**10 for i in range(dimension)],sigma_list).ComputeHurst('General case') for h in Hvalues])
+#print("check H_X^log root finding=",VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},[0.001,0.001,0.001],[0.2,0.3,0.5],0.0001*np.ones(3),[2**30 for _ in range(dimension)],sigma_list).ComputeHurst_log_small_intermittencies("root finding"))
+#print("check H_X^log slope finding=",VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},[0.01,0.05,0.001],[0.2,0.3,0.5],0.0001*np.ones(3),[2**30 for _ in range(dimension)],sigma_list).ComputeHurst_log_small_intermittencies("linreglog moments with bias correction"))
+print("check H_X^log GMM=",VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},[0.01,0.01,0.01],[0.5,0.2,0.3],[0.0017,0.0017,0.0017],[2**30,2**30,2**30],sigma_list).ComputeHurst_log_small_intermittencies("GMM"))
 
 
 
+# Hvalues = np.linspace(1e-3,0.10,20) #.15
+# VarIndexHurst20 = [VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},h*np.ones(3),0.3*np.ones(3),0.0001*np.ones(3),[2**20 for i in range(dimension)],sigma_list).ComputeHurst_log_small_intermittencies("root finding") for h in Hvalues]
+# VarIndexHurst25 = [VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},h*np.ones(3),0.3*np.ones(3),0.0001*np.ones(3),[2**25 for i in range(dimension)],sigma_list).ComputeHurst_log_small_intermittencies("root finding") for h in Hvalues]
+# VarIndexHurst30 = [VarIndexHurst({(0,1):0,(0,2):0,(1,2):0},h*np.ones(3),0.3*np.ones(3),0.0001*np.ones(3),[2**30 for i in range(dimension)],sigma_list).ComputeHurst_log_small_intermittencies("root finding") for h in Hvalues]
+#
+# plt.plot(Hvalues,VarIndexHurst20, color='r', label='T=$2^{14}$')
+# plt.plot(Hvalues,VarIndexHurst25, color='b', label='T=$2^{25}$')
+# plt.plot(Hvalues,VarIndexHurst30, color='g', label='T=$2^{30}$')
+# plt.xlabel('H')
+# plt.title(r'$H^{log}_{X}$ evolution - constant hurst stocks')
+# plt.legend()
+# plt.show()
 
 
+#  GMM Validation of H^log and H_X   ####################################################################################################
+# MultidimS_fbm_model_Hlog = MultidimensionalSfbm([],{},3,[0.03,0.03,0.03],[0.003,0.003,0.003],[2**10,2**10,2**10])
+MultidimS_fbm_model_Hlog = MultidimensionalSfbm([],{(0,1):0},2,[0.03,0.03],[0.005,0.003],[2**30,2**30])
+# print("check covariance matrix = ",MultidimS_fbm_model_Hlog.LogMRM_CovarianceMatrixBuilder_generalcase(4,0.1,True))
 
+lambdasquares = [0.005,0.003]
+MultidimensionalSfbms_Hlog = MultidimensionalSfbm([Sfbm(0.03,lambdasquares[i] ,2**30) for i in range(2)],{(0,1):0})
+
+# print("check covariance matrix = ",MultidimensionalSfbms_Hlog.GenerateMultidimensionalSfbm(5,8,'Brownian correlates - classical',"Non Indep log mrm"))
+
+
+# log_vol_index_Hlog = MultidimensionalSfbms_Hlog.GeneratelogVolMultidimSfbm_Index([0.5, 0.5], 'quadratic variation estimate',4,'mrw',8,32,'Brownian correlates - classical',"Non Indep log mrm")
+# print("log_vol_index_generation_direct = ",log_vol_index_Hlog)
+# GMM_index_Hlog = GMM()
+# index_estimatedGMM_param_Hlog = GMM_index_Hlog.ComputeParamsGMM(log_vol_index_Hlog)
+# print("index_estimatedGMM_param_Hlog = ",index_estimatedGMM_param_Hlog)
 
 

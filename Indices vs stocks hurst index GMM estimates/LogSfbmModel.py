@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 #from numba import njit
-
+import seaborn as sns
 
 def make_basis_vector(size, index):
     arr = np.zeros(size)
@@ -31,9 +31,9 @@ class GaussianProcess:
             TypeError("GaussianProcess error: generation_type is not of expected type, str")
         if type(covariance_matrix)!= np.ndarray:
             TypeError("GaussianProcess error: covariance is not of expected type, np.ndarray")
-        else:
-            self.generation_type = generation_type
-            self.covariance_matrix = covariance_matrix
+        self.generation_type = generation_type
+        self.covariance_matrix = covariance_matrix
+
 
     def Generate(self,size):
         if self.generation_type == 'LastWaveFFT':
@@ -51,8 +51,16 @@ class GaussianProcess:
             if len(u) == len(thecorr)-2:
                 thecorr = np.concatenate([covariance, np.flip(covariance[1:-1])])
             fftcorr = np.real(np.fft.fft(thecorr))
+            # print("len(fftcorr),len(u),len(v) = ",len(fftcorr),len(fftcorr[0]),len(u),len(v))
+            # print("np.sqrt(fftcorr + 0j) * (u + v) = ",np.sqrt(fftcorr + 0j) * np.transpose((u + v)))
 
-            fftcorr = np.sqrt(fftcorr + 0j) * (u + v) / np.sqrt(2)
+
+            if len([fftcorr[0]])!=len(u):
+                fftcorr = np.transpose(np.transpose(np.sqrt(fftcorr + 0j)) * (u + v) / np.sqrt(2))
+            else:
+                fftcorr = np.sqrt(fftcorr + 0j) * (u + v) / np.sqrt(2)
+
+            # fftcorr = np.sqrt(fftcorr + 0j) * (u + v) / np.sqrt(2)
             corr = np.real(np.fft.ifft(fftcorr))
             return corr[:size] * np.sqrt(2 * M)
         # if self.generation_type == 'LastWaveFFT':
@@ -73,24 +81,25 @@ class GaussianProcess:
         #     fftcorr = np.sqrt(fftcorr + 0j) * (u + v) / np.sqrt(2)
         #     corr = np.real(np.fft.ifft(fftcorr))
         #     return corr[:size] * np.sqrt(2 * M)
+        else:
+            return None
 
 
 class Sfbm:
     def __init__(self,H=0.01,lambdasquare=0.02,T=0.61,sigma=1):  #  T=200,
         self.H=H
-        self.lambdasquareintermittency = lambdasquare
+        self.lambdasquare = lambdasquare
         self.T = T
         self.sigma = sigma
 
     def SfbmCorrelation(self,size, dt=.1):
-        tau = dt * np.arange(1, size)
+        timesteps = dt * np.arange(1, size)
         if self.H == 0:
-            correlation_list = self.lambdasquareintermittency * np.log(self.T / tau) * (tau < self.T)
-            correlation_list = np.append(self.lambdasquareintermittency * (1 + np.log(self.T / dt)), correlation_list)
+            correlation_list = self.lambdasquare * np.log(self.T / timesteps) * (timesteps < self.T)
+            correlation_list = np.append(self.lambdasquare * (1 + np.log(self.T / dt)), correlation_list)
         else:
-            xx = np.append(0, tau)
-            K = self.lambdasquareintermittency / (2 * self.H * (1 - 2 * self.H))
-            correlation_list = K * ((self.T * dt) ** (2 * self.H) - xx ** (2 * self.H)) * (xx < self.T * dt)
+            xx = np.append(0, timesteps)
+            correlation_list = self.lambdasquare / (2 * self.H * (1 - 2 * self.H)) * ((self.T * dt) ** (2 * self.H) - xx ** (2 * self.H)) * (xx < self.T * dt)
         m = -correlation_list[0]
         return m, correlation_list
 
@@ -117,9 +126,9 @@ class Sfbm:
         factor = 1
         if self.H > 0:
             factor = M ** (-2 * self.H) / 4
-        self.lambdasquareintermittency *=  factor
+        self.lambdasquare *=  factor
         mrw, mrm = self.GenerateSfbm(size=size * M,subsample=subsample,t=t)
-        self.lambdasquareintermittency /= factor
+        self.lambdasquare /= factor
         dvv = np.diff(np.array(mrw))
         dvv = np.append(dvv[0], dvv)
         dmm = np.diff(mrm)
@@ -171,28 +180,45 @@ class Sfbm:
 
 
 class MultidimensionalSfbm:
-    def __init__(self,Sfbm_models,correlations={},dimension = 1,H_list=[],lambdasquare_list=[],T_list=[],sigma_list=[]):
+    def __init__(self,Sfbm_models,brownian_correlations={},dimension = 1,H_list=[],lambdasquare_list=[],T_list=[],sigma_list=[]):
         if type(Sfbm_models)!=list:
             TypeError("MultidimensionalSfbm error: Sfbm_models is not of expected type, list")
         # if any(type(Sfbm_model)!=Sfbm for Sfbm_model in Sfbm_models):
         #     TypeError("MultidimensionalSfbm error: Sfbm_models is not of expected type, Sfbm")
         All_lists = [H_list,lambdasquare_list,T_list,sigma_list]
-        if (bool(correlations)==True) and any(len(item)!=dimension for item in All_lists):
+        if (bool(brownian_correlations)==True) and any(len(item)!=dimension for item in All_lists if item!=[]):
             TypeError("MultidimensionalSfbm error: all list's size should be equal to dimension")
         else:
             self.Sfbm_models = Sfbm_models
-            self.brownian_correlations = correlations
-            if Sfbm_models == [] or  bool(correlations) == True :
+            self.brownian_correlations = brownian_correlations
+            self.correlation_flag = False
+            if Sfbm_models == [] or  bool(brownian_correlations) == True :
                 self.dimension = dimension
                 self.correlation_flag = True
-            else:
-                self.correlation_flag = False
+                self.H_list = H_list
+                self.lambdasquare_list = lambdasquare_list
+                self.T_list = T_list
+                self.sigma_list = sigma_list
+            if Sfbm_models != []:
                 self.dimension = len(Sfbm_models)
+                self.H_list = [Sfbm_model.H for Sfbm_model in Sfbm_models]
+                self.lambdasquare_list = [Sfbm_model.lambdasquare for Sfbm_model in Sfbm_models]
+                self.T_list = [Sfbm_model.T for Sfbm_model in Sfbm_models]
+                self.sigma_list = [Sfbm_model.sigma for Sfbm_model in Sfbm_models]
+                if bool(brownian_correlations) == True:
+                    self.correlation_flag = True
+            self.T = np.mean(np.array(self.T_list))
+            # else:
+            #     self.correlation_flag = False
+            #     self.dimension = len(Sfbm_models)
             #self.w_correlation_matrix = None   w will be iid
-            self.H_list = H_list
-            self.lambdasquare_list = lambdasquare_list
-            self.T_list = T_list
-            self.sigma_list = sigma_list
+
+
+            # self.H_list = H_list
+            # self.lambdasquare_list = lambdasquare_list
+            # self.T_list = T_list
+
+            # self.sigma_list = sigma_list
 
 
     def CorrelationMatrixBuilder_from_correlations(self, correlations):
@@ -209,36 +235,78 @@ class MultidimensionalSfbm:
         correl_matrix = correl_matrix + correl_matrix.T - np.diag(np.diag(correl_matrix))
         return correl_matrix
 
-    def GenerateMultidimensionalSfbm(self,size=4096, subsample=8,brownian_correl_method = 'Brownian correlates - classical'):
+    def LogMRM_CovarianceMatrixBuilder_generalcase(self,size=4096, dt=.1,flag_with_simulation=False):
+        timesteps = dt * np.arange(1, size)
+        # big_cov_matrix=[[0 for _ in range(self.dimension*(size-1))] for _ in range(self.dimension*(size-1))]
+        covariance_random_field = lambda i,j,t,s:self.lambdasquare_list[i]*self.lambdasquare_list[j]/((self.H_list[i]+self.H_list[j])*(1-(self.H_list[i]+self.H_list[j])))*(self.T**(self.H_list[i]+self.H_list[j])-abs(t-s)**(self.H_list[i]+self.H_list[j]))
+        # for i in range(self.dimension*(size-1)):
+        #     for j in range(self.dimension*(size-1)):
+        #         hurst_i,hurst_j = i//(size-1),j//(size-1)
+        #         timestep_i,timestep_j = i%(size-1),j%(size-1)
+        #         # print('hurst_i,hurst_j,timestep_i,timestep_j = ',hurst_i,hurst_j,timestep_i,timestep_j)
+        #         big_cov_matrix[i][j] = covariance_random_field(hurst_i,hurst_j,timesteps[timestep_i], timesteps[timestep_j])
+        big_cov_matrix = [[covariance_random_field(i//(size-1),j//(size-1),timesteps[i%(size-1)], timesteps[j%(size-1)]) for j in range(self.dimension * (size - 1))] for i in range(self.dimension * (size - 1))]
+        mean_vector = np.array([self.lambdasquare_list[i//(size-1)] * self.T ** (
+                    2 * self.H_list[i//(size-1)]) / (4 * (
+                    self.H_list[i//(size-1)] * (1 - 2 * self.H_list[i//(size-1)]))) for i in
+                                range(self.dimension * (size - 1))])
+        if flag_with_simulation==False:
+            return mean_vector,big_cov_matrix
+        else:
+            gaussian_instance_process = GaussianProcess('LastWaveFFT', big_cov_matrix)
+            big_random_vector = gaussian_instance_process.Generate(1)[0]
+            multipleLogMRM_paths = np.array_split(big_random_vector,self.dimension)
+            return multipleLogMRM_paths
+
+    def GenerateMultidimensionalSfbm(self,size=4096, subsample=8,brownian_correl_method = 'Brownian correlates - classical',generation_type = "Indep log mrm"):
         log_components = []
-        if self.correlation_flag == False:
+        if (self.correlation_flag == False) and (generation_type == "Indep log mrm"):
             if self.Sfbm_models == []:
                 ValueError("MultidimensionalSfbm error: self.Sfbm_models should not be empty if correlation_flag =False")
             else:
-
                 for Sfbm_model in self.Sfbm_models:
                     log_components.append(Sfbm_model.GenerateSfbm(size, subsample))
         else:
             log_mrm_matrix, dt = [], 1 / subsample
-            # Independant w
-            for dimension in range(self.dimension):
-                Sfbm_model = Sfbm(self.H_list[dimension], self.lambdasquare_list[dimension], self.T_list[dimension],
-                                  self.sigma_list[dimension])
-                m, corr = Sfbm_model.SfbmCorrelation(size=(size - 1) * subsample, dt=dt)
-                log_mrm = GaussianProcess('LastWaveFFT', corr).Generate(size * subsample)
-                log_mrm = log_mrm + m
-                log_mrm = log_mrm[::subsample]
-                log_mrm_matrix.append(log_mrm + m)
+            if generation_type == "Indep log mrm":
+                for dimension in range(self.dimension):
+                    Sfbm_model = Sfbm(self.H_list[dimension], self.lambdasquare_list[dimension], self.T_list[dimension],self.sigma_list[dimension])
+                    m, corr = Sfbm_model.SfbmCorrelation(size=(size - 1) * subsample, dt=dt)
+                    log_mrm = GaussianProcess('LastWaveFFT', corr).Generate(size * subsample)
+                    log_mrm = log_mrm + m
+                    log_mrm = log_mrm[::subsample]
+                    log_mrm_matrix.append(log_mrm + m)
+            if generation_type == "Non Indep log mrm":
+                # log_mrm_matrix = self.LogMRM_CovarianceMatrixBuilder_generalcase((size - 1) * subsample,dt,flag_with_simulation=True)
+                
+                # THIS
+                # log_mrm_matrix = self.LogMRM_CovarianceMatrixBuilder_generalcase((size) * subsample+1, dt,flag_with_simulation=True)
+
+                # print("log_mrm_matrix = ",np.array(log_mrm_matrix),len(log_mrm_matrix[0]),(size) * subsample,(size) , subsample)
+                # print("np.hsplit(log_mrm_matrix,size) = ",len(np.hsplit(np.array(log_mrm_matrix),subsample)[0][0]))
+                # log_mrm_matrix = [log_mrm[::subsample] for log_mrm in log_mrm_matrix]
+
+                # THIS
+                # log_mrm_matrix = list(np.hsplit(np.array(log_mrm_matrix), subsample)[0])
+
+                log_mrm_matrix = list(np.hsplit(np.array(self.LogMRM_CovarianceMatrixBuilder_generalcase((size) * subsample+1, dt,flag_with_simulation=True)), subsample)[0])
+
+            brownian_correlation_matrix = np.array([])
             if brownian_correl_method == 'Brownian correlates - classical':
-                brownian_correlation_matrix = self.CorrelationMatrixBuilder_from_correlations(self.brownian_correlations)
+                brownian_correlation_matrix = self.CorrelationMatrixBuilder_from_correlations(
+                    self.brownian_correlations)
             if brownian_correl_method == 'Brownian correlates - random correl matrix':
-                eigen_vectors =  ConstructBasis(self.dimension)   # canonical basis
+                eigen_vectors = ConstructBasis(self.dimension)  # canonical basis
                 eigen_values = np.exp(log_mrm_matrix[0])  # w are independant
-                brownian_correlation_matrix = SumMultipleArrays([eigen_values[i]*np.outer(eigen_vectors[i],eigen_vectors[i]) for i in range(self.dimension)])
+                brownian_correlation_matrix = SumMultipleArrays( [eigen_values[i] * np.outer(eigen_vectors[i], eigen_vectors[i]) for i in range(self.dimension)])
             brownian_correlation_matrix_fact = np.linalg.cholesky(brownian_correlation_matrix)
             gg = np.random.normal(0, 1, (self.dimension, size))
             brownian_increments = np.array([brownian_correlation_matrix_fact @ gg[:, j] for j in range(size)]).T
-            log_components = [(np.cumsum(np.exp(w) * brownian_increment * sigma * np.sqrt(dt)), np.array([])) for w, brownian_increment, sigma in zip(log_mrm_matrix, brownian_increments, self.sigma_list)]
+
+            # print("log_mrm_matrix = ",log_mrm_matrix)
+            # print("brownian_increments = ", brownian_increments)
+            # print("self.sigma_list =",self.sigma_list)
+            log_components = [(np.cumsum(np.exp(w) * brownian_increment * sigma * np.sqrt(dt)), np.array([])) for w, brownian_increment, sigma in  zip(log_mrm_matrix, brownian_increments, self.sigma_list)]
         return log_components
 
 
@@ -268,13 +336,14 @@ class MultidimensionalSfbm:
                 return np.log(index_mrw), index_mrm
 
 
-    def GeneratelogVolMultidimSfbm_Index(self,weights,method='quadratic variation estimate',size=4096, building_type = 'mrw',subsample=8,M=32,brownian_correl_method = 'Brownian correlates - classical'):  #,sigma=1, M=32
+    def GeneratelogVolMultidimSfbm_Index(self,weights,method='quadratic variation estimate',size=4096, building_type = 'mrw',subsample=8,M=32,brownian_correl_method = 'Brownian correlates - classical',generation_type = "Indep log mrm"):  #,sigma=1, M=32
         # factor = 1
         # if self.H > 0:
         #     factor = M ** (-2 * self.H) / 4
         # self.lambdasquareintermittency *=  factor
-        trajectories = self.GenerateMultidimensionalSfbm(size*M, subsample,brownian_correl_method)
-        print("trajectories = ",trajectories)
+        # print("INSIDE")
+        trajectories = self.GenerateMultidimensionalSfbm(size*M, subsample,brownian_correl_method,generation_type)
+        # print("trajectories = ",trajectories)
 
         # if building_type == 'mrm':
         #     mrm_multidim_index = self.Index_Builder(weights, trajectories, building_type)
@@ -293,6 +362,7 @@ class MultidimensionalSfbm:
         # plt.show()
 
         # self.lambdasquareintermittency /= factor
+
         if self.correlation_flag == False:
             if method=='quadratic variation estimate':
                 dvv = np.diff(np.array(mrw_multidim_index))
@@ -350,7 +420,7 @@ class MultipleIndicesConstructor:
             self.multiple_sigma_list = multiple_sigma_list
             self.correlation_flags = []
 
-    def ConstructIndicestrajectories(self,size,subsample=4,building_type ='mrm and mrw',brownian_correl_method = 'Brownian correlates - classical'):
+    def ConstructIndicestrajectories(self,size,subsample=4,building_type ='mrm and mrw',brownian_correl_method = 'Brownian correlates - classical',generation_type = "Indep log mrm"):
         Indicestrajectories = []
         # for weights, Sfbm_models,correlations,Hs,lambdasquare_list,T_list,sigma_list
         # in zip(*[self.multiple_weights,self.multipleSfbm_models, self.multiple_correlations,self.multiple_Hs,
@@ -365,7 +435,7 @@ class MultipleIndicesConstructor:
             dimension = len(self.multiple_Hs[list_index])
             Index = MultidimensionalSfbm(Sfbm_models,self.multiple_correlations[list_index],dimension,self.multiple_Hs[list_index],self.multiple_lambdasquare_list[list_index],self.multiple_T_list[list_index],self.multiple_sigma_list[list_index])
             self.correlation_flags.append(Index.correlation_flag)
-            Sfbms_generation_example = Index.GenerateMultidimensionalSfbm(size, subsample,brownian_correl_method)
+            Sfbms_generation_example = Index.GenerateMultidimensionalSfbm(size, subsample,brownian_correl_method,generation_type)
 
             indices_trajectories = Index.Index_Builder(weights, Sfbms_generation_example,building_type)
             Indicestrajectories.append(indices_trajectories)
@@ -374,9 +444,9 @@ class MultipleIndicesConstructor:
         return Indicestrajectories
 
 
-    def ConstructLogVolIndicestrajectories(self,size,subsample=8,method='quadratic variation estimate',keys = [],M = 32,brownian_correl_method = 'Brownian correlates - classical',building_type = 'mrw'):
+    def ConstructLogVolIndicestrajectories(self,size,subsample=8,method='quadratic variation estimate',keys = [],M = 32,brownian_correl_method = 'Brownian correlates - classical',building_type = 'mrw',generation_type = "Indep log mrm"):
 
-        log_vol_indices_trajectories,indices_trajectories = [],self.ConstructIndicestrajectories(size*M,subsample,building_type,brownian_correl_method)
+        log_vol_indices_trajectories,indices_trajectories = [],self.ConstructIndicestrajectories(size*M,subsample,building_type,brownian_correl_method,generation_type)
         if keys != []:
             if len(indices_trajectories)!=len(keys):
                 ValueError("MultipleIndicesConstructor error: keys and indices_trajectories should be of the same length")
